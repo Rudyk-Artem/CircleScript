@@ -1,14 +1,11 @@
 from math import sin,cos,tan,atan,sinh,cosh,log,pi,e
+from cmath import phase,isnan,isinf
 from random import random
 from BasicTypes import *
 def Ln(n,k=0):
-    if(n.real==0):
-        fi=atan(float('inf'))
-    else:
-        fi=atan(n.imag/n.real)
-    if(abs(n)==0):
+    if(n==0):
         return complex('inf')
-    return log(abs(n))+1j*(fi+2*pi*k)
+    return log(abs(n))+1j*(phase(n)+2*pi*k)
 class Stack():
     def __init__(self):
         self.stack=list()
@@ -57,7 +54,7 @@ class Stack():
             try:
                 buffer=[complex(self.pop()),complex(self.pop())]
                 if(buffer[0]==0):
-                    if(buffer[1]==0 or str(abs(buffer[1]))=='nan'):
+                    if(buffer[1]==0 or isnan(buffer[1])):
                         self.push(num_('nan'))
                     else:
                         self.push(num_('inf'))
@@ -73,11 +70,11 @@ class Stack():
         if(type(self.stack[-1])==num_ and type(self.stack[-2])==num_):
             try:
                 buffer=[complex(self.pop()),complex(self.pop())]
-                if(str(abs(buffer[0]))=='nan' or str(abs(buffer[1]))=='nan' or (buffer[0]==0 and (buffer[1]==0 or abs(buffer[1])==float('inf'))) or (abs(buffer[0])==float('inf') and abs(buffer[1])==float('inf'))):
+                if(isnan(buffer[0]) or isnan(buffer[1]) or (buffer[0]==0 and (buffer[1]==0 or isinf(buffer[1]))) or (isinf(buffer[0]) and isinf(buffer[1]))):
                     self.push(num_('nan'))
-                elif(((buffer[0].imag!=0 or buffer[0].real<0) and buffer[1]==0) or ((buffer[0].real>0) and abs(buffer[1])==float('inf')) or (abs(buffer[0])==float('inf') and (buffer[1]!=1))):
+                elif(((buffer[0].imag!=0 or buffer[0].real<0) and buffer[1]==0) or ((buffer[0].real>0) and isinf(buffer[1])) or (isinf(buffer[0]) and (buffer[1]!=1))):
                     self.push(num_('inf'))
-                elif((buffer[0].real<0) and abs(buffer[1])==float('inf')):
+                elif((buffer[0].real<0) and isinf(buffer[1])):
                     self.push(num_(0))
                 else:
                     self.push(num_(buffer[1]**buffer[0]))
@@ -95,7 +92,7 @@ class Stack():
         if(type(self.stack[-1])==num_ and type(self.stack[-2])==num_):
             try:
                 buffer=[complex(self.pop()),complex(self.pop())]
-                if(str(abs(buffer[0]))=='nan' or str(abs(buffer[1]))=='nan' or buffer[0]==0 or buffer[0]==1 or abs(buffer[0])==float('inf')):
+                if(isnan(buffer[0]) or isnan(buffer[1]) or buffer[0]==0 or buffer[0]==1 or isinf(buffer[0])):
                     self.push(num_('nan'))
                 else:
                     self.push(round(num_(Ln(buffer[1])/Ln(buffer[0])),15))
@@ -207,7 +204,7 @@ class Stack():
         if(type(self.stack[-1])==num_):
             try:
                 buffer=complex(self.pop())
-                if(buffer==complex('inf')):
+                if(isinf(buffer)):
                     self.push(num_(pi/2))
                 else:
                     self.push(round(num_(-0.5j*Ln((1+1j*buffer)/(1-1j*buffer))),15))

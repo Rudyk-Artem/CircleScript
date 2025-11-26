@@ -158,8 +158,8 @@ s.round()
 print(s,"round")
 s.abs()
 print(s,"abs")
-print("Ретельна перевірка arctan:")
-n=24
+print("Докладна перевірка tan й arctan:")
+n=3
 for i in range(n*2+1):
     s.push(num_(i*pi/n-pi))
     s.push(num_(i*pi/n-pi))
