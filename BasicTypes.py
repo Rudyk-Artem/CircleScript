@@ -1,3 +1,4 @@
+from cmath import isnan,isinf
 class value_():
     def __init__(self,v):
         self.v=v
@@ -15,10 +16,10 @@ class none_(value_):
 class num_(value_):
     def __init__(self,n):
         if(type(n)==str_):
-            n=str(n)
+            n=str(n)[1:-1]
         if(type(n)==str):
             n=n.replace('∞','inf').replace('∅','nan').replace('*i','j')
-        if(str(abs(complex(n)))=='inf' or str(abs(complex(n)))=='nan' or abs(complex(n))==0):
+        if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
             n=abs(complex(n))
         self.n=complex(n)
     def __str__(self):
@@ -53,6 +54,8 @@ class num_(value_):
     def __complex__(self):
         return self.n
     def __eq__(self,other):
+        if(isnan(self.n) and isnan(other.n)):
+            return True
         return self.n==other.n
     def __round__(self,n):
         if(type(n)==int):
@@ -68,7 +71,7 @@ class num_(value_):
 class bool_(value_):
     def __init__(self,b):
         if(type(b)==str_):
-            b=str(b)
+            b=str(b)[1:-1]
         if(type(b)==str):
             if(b=="True" or b=="true"):
                 b=True
@@ -93,15 +96,40 @@ class bool_(value_):
         return self.b==other.b
 class bytes_(value_):
     def __init__(self,b):
+        if(type(b)==str_):
+            b=str(b)[1:-1]
+        if(type(b)==str):
+            l=[]
+            s,f=1,1
+            for i in range(2,len(b)):
+                if(b[i]=="\\" or b[i]=="'"):
+                    s=f
+                    f=i
+                    l.append(int(b[s+1:f],16))
+            b=l
+        if(type(b)==list):
+            i=0
+            while i<len(b):
+                if(b[i]>255):
+                    n=b.pop(i)
+                    while n>0:
+                        b.insert(i,n%256)
+                        n=n//256
+                i+=1
         self.b=bytes(b)
     def __str__(self):
-        return str(self.b)
+        s="'"
+        for i in range(len(self.b)):
+            s=s+'\\'+'0'*(1-int(self.b[i])//16)+hex(int(self.b[i]))[2:]
+        return s+"'"
     def __bytes__(self):
         return self.b
     def __eq__(self,other):
         return self.b==other.b
 class str_(value_):
     def __init__(self,s):
+        if(type(s)==str_):
+            s=str(s)[1:-1]
         self.s=str(s)
     def __str__(self):
         return '"'+self.s+'"'
@@ -153,14 +181,31 @@ class function_(value_):
     def __eq__(self,other):
         return self.f==other.f
 class type_(value_):
-    def __init__(self):
-        pass
+    def __init__(self,t):
+        if(type(t)==str_):
+            t=str(t)[1:-1]
+        if(type(t)==str):
+            try:
+                valueTypes={"[none]":none_,"[num]":num_,"[bool]":bool_,"[bytes]":bytes_,"[str]":str_,"[list]":list_,"[dict]":dict_,"[function]":function_,"[type]":type_,"[error]":error_}
+                t=valueTypes[t]
+            except KeyError:
+                raise ValueError
+        if(type(t)!=type):
+            t=type(t)
+        if(issubclass(t,value_)):
+            self.t=t
+        else:
+            raise TypeError
     def __str__(self):
-        pass
+        return '['+str(self.t)[19:-3]+']'
     def __eq__(self,other):
         return self.t==other.t
 class error_(value_):
     def __init__(self,code=0):
+        if(type(code)==str_):
+            code=str(code)[1:-1]
+        if(type(code)==str):
+            code=int(code[1:-1])
         self.code=int(code)
     def __str__(self):
         return "{"+str(self.code)+"}"

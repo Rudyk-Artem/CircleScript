@@ -168,3 +168,10 @@ for i in range(n*2+1):
     s.tan()
     s.arctan()
     print(f"tan(α)= {str(s.stack[-2]): <20}| {i-n: >3}*π/{n}= {str(s.stack[-3]): <20}| arctan(tan(α))= {str(s.stack[-1]): <19}")
+
+b=[]
+for i in range(300):
+    b.append(i)
+print(bytes_(str_(bytes_(b))))
+print(error_(str_("{0}")))
+print(type_(str_("[num]")),type_(none_))
