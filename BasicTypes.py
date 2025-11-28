@@ -1,4 +1,49 @@
 from cmath import isnan,isinf
+errorCodes={Exception:0,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
+def value(v):
+    if(type(v)==str):
+        if(v[:4].capitalize()=="None"):
+            v=none_()
+        elif(v[:4].capitalize()=="True" or v[:5].capitalize()=="False"):
+            v=bool_(v)
+        elif(v[0]=='"'):
+            v=str_(v)
+        elif(v[0]=="'"):
+            v=bytes_(v)
+        elif(v[0]=='{'):
+            for i in range(len(v)):
+                if(v[i]=='@' or v[i]=='₴'):
+                    v=function_(v)
+                    break
+                elif(v[i]=='}'):
+                    v=error_(v)
+                    break
+        elif(v[0]=='['):
+            if(set([v[1]])-{'n','s','b','l','d','f','t','e'}==set()):
+                v=type_(v)
+            else:
+                for i in range(len(v)):
+                    if(v[i]==':'):
+                        v=dict_(v)
+                        break
+                    elif(v[i]==',' or v[i]=='['):
+                        v=list_(v)
+                        break
+        elif(set([v[0]])-{'0','1','2','3','4','5','6','7','8','9','+','-','τ','π','e','φ','i','∞','∅'}==set()):
+            v=num_(v) #тимчасово, поки не напишу алгоритм обчислення рівнянь
+            pass
+    try:
+        if(type(v)==type and set([v])-set(errorCodes.keys())==set()):
+            v=error_(v)
+        else:
+            valueTypes={type(None):none_,int:num_,float:num_,complex:num_,bool:bool_,bytes:bytes_,str:str_,list:list_,dict:dict_,type:type_}
+            v=valueTypes[type(v)](v)
+    except KeyError:
+        pass
+    if(issubclass(type(v),value_)):
+        return v
+    else:
+        raise ValueError
 class value_():
     def __init__(self,v):
         self.v=v
@@ -7,7 +52,7 @@ class value_():
     def __eq__(self,other):
         return self.v==other.v
 class none_(value_):
-    def __init__(self):
+    def __init__(self,v=None):
         pass
     def __str__(self):
         return "None"
@@ -137,6 +182,19 @@ class str_(value_):
         return self.s==other.s
 class list_(value_):
     def __init__(self,l):
+        if(type(l)==str_):
+            l=str(l)[1:-1]
+        if(type(l)==str):
+            nl=[]
+            s,f=0,0
+            while l.count(" ")>0:
+                l=l.replace(" ", "")
+            for i in range(2,len(l)):
+                if(l[i]=="," or l[i]=="]"):
+                    s=f
+                    f=i
+                    nl.append(value(l[s+1:f]))
+            l=nl
         self.l=list(l)
         self.i=0
     def __str__(self):
@@ -206,6 +264,11 @@ class error_(value_):
             code=str(code)[1:-1]
         if(type(code)==str):
             code=int(code[1:-1])
+        if(type(code)==type and set([code])-set(errorCodes.keys())==set()):
+            try:
+                code=errorCodes[code]
+            except KeyError:
+                code=0
         self.code=int(code)
     def __str__(self):
         return "{"+str(self.code)+"}"

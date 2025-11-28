@@ -169,9 +169,14 @@ for i in range(n*2+1):
     s.arctan()
     print(f"tan(α)= {str(s.stack[-2]): <20}| {i-n: >3}*π/{n}= {str(s.stack[-3]): <20}| arctan(tan(α))= {str(s.stack[-1]): <19}")
 
-b=[]
-for i in range(300):
-    b.append(i)
-print(bytes_(str_(bytes_(b))))
-print(error_(str_("{0}")))
-print(type_(str_("[num]")),type_(none_))
+print(value("[1+1j,4.7E5,-3.141592653589793238462643383279502884197169399,0,∞,∅]"))
+print(none_(str_(none_(None))))
+print(num_(str_(num_(2E3+5j))))
+print(bool_(str_(bool_(True))))
+print(bytes_(str_(bytes_([0,15,255,32767]))))
+print(str_(str_(str_("abc"))))
+print(list_(str_(list_([1,2,3]))))
+# print(dict_(str_(dict_(0))))
+# print(function_(str_(function_(0))))
+print(type_(str_(type_(num_))))
+print(error_(str_(error_(0))))
