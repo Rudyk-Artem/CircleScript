@@ -1,11 +1,7 @@
-from math import sin,cos,tan,atan,sinh,cosh,log,pi,e
-from cmath import phase,isnan,isinf
+from math import sin,cos,sinh,cosh,pi
+from cmath import isnan,isinf
 from random import random
 from BasicTypes import *
-def Ln(n,k=0):
-    if(n==0):
-        return complex('inf')
-    return log(abs(n))+1j*(phase(n)+2*pi*k)
 class Stack():
     def __init__(self):
         self.stack=list()
@@ -285,7 +281,7 @@ class Stack():
     def concatenate(self):
         pass
     def push(self,v):
-        self.stack.append(v)
+        self.stack.append(value(v))
     def pop(self):
         return self.stack.pop()
     def copy(self):
