@@ -1,6 +1,7 @@
 from math import sin,cos,sinh,cosh,pi
 from cmath import isnan,isinf
 from random import random
+from AuxiliaryFunctions import Ln
 from BasicTypes import *
 class Stack():
     def __init__(self):
@@ -196,7 +197,7 @@ class Stack():
                 self.push(error_(6))
         else:
             self.push(error_(1))
-    def arctan(self): #чомусь ця функція не завжди дорівнює α при tan(α) якщо α>π/4 або α<-π/4. tan(α) працює правильно. Треба буде виправити цю формулу
+    def arctan(self):
         if(type(self.stack[-1])==num_):
             try:
                 buffer=complex(self.pop())

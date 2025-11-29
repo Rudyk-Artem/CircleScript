@@ -1,104 +1,5 @@
-from cmath import phase,isnan,isinf
-from math import log,pi
-def Ln(n,k=0):
-    if(n==0):
-        return complex('inf')
-    return log(abs(n))+1j*(phase(n)+2*pi*k)
-errorCodes={Exception:0,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
-priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
-constants={"τ":6.2831853071795864,"π":3.1415926535897932,"e":2.7182818284590452,"φ":1.6180339887498948,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
-defaultValue={"+":(0,0),"-":(0,0),"*":(1,1),"/":(1,1),"↧":(2.7182818284590452,1),"^":(2,1),"√":(2,1),"E":(1,0),"~":(-1,-1)}
-operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:Ln(a)/Ln(b),"^":lambda a,b:a**b,"√":lambda a,b:a**(1/b),"E":lambda a,b:a*10**b,"~":lambda a,b:a*b,"n":lambda a:complex(a),"c":lambda a:constants[a],"d":lambda d:defaultValue[d[0]][d[1]]}
-def is_number(s):
-    try:
-        complex(s)
-        return True
-    except:
-        return False
-class ExpressionTreeNode():
-    def __init__(self,v,d=("+",0)):
-        pl=[]
-        for i in range(len(v)):
-            if(set([v[i]])-set(priorityOfOperations.keys())==set()):
-                pl.append(priorityOfOperations[v[i]])
-        if(pl!=[]):
-            o=min(pl)
-            for i in range(len(v)):
-                try:
-                    if(priorityOfOperations[v[i]]==o):
-                        self.op=v[i]
-                        self.left=ExpressionTreeNode(v[:i],(v[i],0))
-                        self.right=ExpressionTreeNode(v[i+1:],(v[i],1))
-                        self.value=None
-                        break
-                except:
-                    pass
-        else:
-            if(set([v])-set(constants.keys())==set()):
-                self.op='c'
-                self.left=None
-                self.right=None
-                self.value=v
-            elif(is_number(v)):
-                self.op='n'
-                self.left=None
-                self.right=None
-                self.value=v
-            else:
-                self.op='d'
-                self.left=None
-                self.right=None
-                self.value=d
-    def count(self):
-        if(set([self.op])-set(operations.keys())==set()):
-            if(set([self.op])-set(priorityOfOperations.keys())==set()):
-                an=operations[self.op](self.left.count(),self.right.count())
-            else:
-                an=operations[self.op](self.value)
-        return an
-def value(v):
-    if(type(v)==str):
-        if(v[:4].capitalize()=="None"):
-            v=none_()
-        elif(v[:4].capitalize()=="True" or v[:5].capitalize()=="False"):
-            v=bool_(v)
-        elif(v[:1]=='"'):
-            v=str_(v[1:-1])
-        elif(v[:1]=="'"):
-            v=bytes_(v)
-        elif(v[:1]=='{'):
-            for i in range(len(v)):
-                if(v[i]=='@' or v[i]=='₴'):
-                    v=function_(v)
-                    break
-                elif(v[i]=='}'):
-                    v=error_(v)
-                    break
-        elif(v[:1]=='['):
-            if(set([v[1:2]])-{'n','s','b','l','d','f','t','e'}==set()):
-                v=type_(v)
-            else:
-                for i in range(len(v)):
-                    if(v[i]==':'):
-                        v=dict_(v)
-                        break
-                    elif(v[i]==',' or v[i]=='['):
-                        v=list_(v)
-                        break
-        elif(set([v[:1]])-{'0','1','2','3','4','5','6','7','8','9','+','-','~','τ','π','e','φ','i','∞','∅'}==set()):
-            v=num_(ExpressionTreeNode(v).count())
-    try:
-        if(type(v)==type and set([v])-set(errorCodes.keys())==set()):
-            v=error_(v)
-        else:
-            valueTypes={type(None):none_,int:num_,float:num_,complex:num_,bool:bool_,bytes:bytes_,str:str_,list:list_,dict:dict_,type:type_}
-            v=valueTypes[type(v)](v)
-    except KeyError:
-        pass
-    if(issubclass(type(v),value_)):
-        return v
-    else:
-        raise ValueError
+from cmath import isnan,isinf
+from AuxiliaryFunctions import *
 class value_():
     def __init__(self,v):
         self.v=v
@@ -310,7 +211,8 @@ class type_(value_):
             t=str(t)[1:-1]
         if(type(t)==str):
             try:
-                valueTypes={"[none]":none_,"[num]":num_,"[bool]":bool_,"[bytes]":bytes_,"[str]":str_,"[list]":list_,"[dict]":dict_,"[function]":function_,"[type]":type_,"[error]":error_}
+                valueTypes={"[none]":none_,"[num]":num_,"[bool]":bool_,"[bytes]":bytes_,"[str]":str_,
+                            "[list]":list_,"[dict]":dict_,"[function]":function_,"[type]":type_,"[error]":error_}
                 t=valueTypes[t]
             except KeyError:
                 raise ValueError
