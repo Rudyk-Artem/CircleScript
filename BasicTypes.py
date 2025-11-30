@@ -14,6 +14,8 @@ class none_(value_):
         return "None"
     def __eq__(self,other):
         return type(self)==type(other)
+    def __hash__(self):
+        return hash(None)
 class num_(value_):
     def __init__(self,n):
         if(type(n)==str_):
@@ -58,6 +60,8 @@ class num_(value_):
         if(isnan(self.n) and isnan(other.n)):
             return True
         return self.n==other.n
+    def __hash__(self):
+        return hash(self.n)
     def __round__(self,n):
         if(type(n)==int):
             self.n=complex(round(self.n.real,n),round(self.n.imag,n))
@@ -95,6 +99,8 @@ class bool_(value_):
         return self.b
     def __eq__(self,other):
         return self.b==other.b
+    def __hash__(self):
+        return hash(self.b)
 class bytes_(value_):
     def __init__(self,b):
         if(type(b)==str_):
@@ -103,8 +109,8 @@ class bytes_(value_):
             l=[]
             s,f=1,1
             for i in range(1,len(b)):
-                if(b[s]=='\\' and i>1):
-                    if(b[i]=="\\" or b[i]=="'"):
+                if(b[s]=='\\'):
+                    if((b[i]=="\\" or b[i]=="'") and i>1):
                         s=f
                         f=i
                         l.append(int(b[s+1:f],16))
@@ -131,6 +137,8 @@ class bytes_(value_):
         return self.b
     def __eq__(self,other):
         return self.b==other.b
+    def __hash__(self):
+        return hash(self.b)
 class str_(value_):
     def __init__(self,s):
         if(type(s)==str_):
@@ -140,6 +148,8 @@ class str_(value_):
         return '"'+self.s+'"'
     def __eq__(self,other):
         return self.s==other.s
+    def __hash__(self):
+        return hash(self.s)
 class list_(value_):
     def __init__(self,l):
         if(type(l)==str_):
@@ -162,12 +172,15 @@ class list_(value_):
                 elif(l[i]=="]"):
                     r-=1
             l=nl
+        if(type(l)==list):
+            for i in range(len(l)):
+                l[i]=value(l[i])
         self.l=list(l)
         self.i=0
     def __str__(self):
         s="["
-        for i in range(len(self.l)):
-            s=s+str(self.l[i])+", "
+        for i in self.l:
+            s=s+str(i)+", "
         return s[:-2]+"]"
     def __iter__(self):
         self.i=0
@@ -179,23 +192,76 @@ class list_(value_):
             return res
         else:
             raise StopIteration
+    def __len__(self):
+        return len(self.l)
     def __getitem__(self,i):
         return self.l[i]
     def __setitem__(self,i,v):
         self.l[i]=v
-    def __len__(self):
-        return len(self.l)
-    def insert(self,i,v):
-        self.l.insert(i,v)
     def pop(self,i):
-        return self.l.pop(i)
+        return self.l.pop(int(i))
+    def insert(self,i,v):
+        self.l.insert(int(i),v)
     def __eq__(self,other):
         return self.l==other.l
 class dict_(value_):
-    def __init__(self):
-        pass
+    def __init__(self,d):
+        if(type(d)==str_):
+            d=str(d)[1:-1]
+        if(type(d)==str):
+            l,r=[],0
+            s,m,f=0,0,0
+            while d.count(", ")+d.count(" ,")+d.count("[ ")+d.count(" ]")>0:
+                d=d.replace(", ", ",")
+                d=d.replace(" ,", ",")
+                d=d.replace("[ ", "[")
+                d=d.replace(" ]", "]")
+            for i in range(len(d)):
+                if(d[i]=="["):
+                    r+=1
+                elif(d[i]==":" and r==1):
+                    m=i
+                elif((d[i]=="," or d[i]=="]") and r==1):
+                    s=f
+                    f=i
+                    l.append((value(d[s+1:m]),value(d[m+1:f])))
+                elif(d[i]=="]"):
+                    r-=1
+            d=dict(l)
+        if(type(d)==dict):
+            nd={}
+            for k,i in d.items():
+                nd[value(k)]=value(i)
+            d=nd
+        self.d=dict(d)
+        self.i=0
     def __str__(self):
-        pass
+        s="["
+        for k,i in self.d.items():
+            s=s+str(k)+":"+str(i)+", "
+        return s[:-2]+"]"
+    def __iter__(self):
+        self.i=0
+        return self
+    def __next__(self):
+        if self.i<len(self.d):
+            key=list(self.d.keys())[self.i]
+            self.i+=1
+            return (key,self.d[key])
+        else:
+            raise StopIteration
+    def __len__(self):
+        return len(self.d)
+    def __getitem__(self,k):
+        return self.d[k]
+    def __setitem__(self,k,v):
+        self.d[k]=v
+    def pop(self,k):
+        buffer=self.d[k]
+        del self.d[k]
+        return buffer
+    def insert(self,k,v):
+        self.d[k]=v
     def __eq__(self,other):
         return self.d==other.d
 class function_(value_):
@@ -226,6 +292,8 @@ class type_(value_):
         return '['+str(self.t)[19:-3]+']'
     def __eq__(self,other):
         return self.t==other.t
+    def __hash__(self):
+        return hash(self.t)
 class error_(value_):
     def __init__(self,code=0):
         if(type(code)==str_):
@@ -242,3 +310,5 @@ class error_(value_):
         return "{"+str(self.code)+"}"
     def __eq__(self,other):
         return self.code==other.code
+    def __hash__(self):
+        return hash(self.code)

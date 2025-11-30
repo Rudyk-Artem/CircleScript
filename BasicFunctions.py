@@ -294,7 +294,7 @@ class Stack():
     def Tswap(self):
         self.stack.insert(-2,self.pop())
     def moveUp(self):
-        if(type(self.stack[-1])==int):
+        if(type(self.stack[-1])==num_):
             self.push(self.stack.pop(self.stack.pop()))
         elif(type(self.stack[-1])==list_):
             buffer=[list(self.stack.pop())]
@@ -304,15 +304,21 @@ class Stack():
                         self.push(list_(buffer[0]))
                         self.push(error_(2))
                         return
-                else:
+                elif(not (issubclass(type(buffer[0][i]),value_) and (type(buffer[0][i])!=list_ and type(buffer[0][i]))!=dict_)):
                     self.push(list_(buffer[0]))
                     self.push(error_(1))
                     return
             try:
                 buffer.append(self.stack[int(buffer[0][0])])
-                for i in range(1,len(buffer)):
-                    buffer[1]=buffer[1][int(buffer[0][i])]
-                self.push(buffer[1].pop(int(buffer[0][-1])))
+                for i in range(1,len(buffer[0])-1):
+                    if(type(buffer[1])==list_):
+                        buffer[1]=buffer[1][int(buffer[0][i])]
+                    elif(type(buffer[1])==dict_):
+                        buffer[1]=buffer[1][buffer[0][i]]
+                    else:
+                        self.push(list_(buffer[0]))
+                        self.push(error_(1))
+                self.push(buffer[1].pop(buffer[0][-1]))
             except TypeError:
                 self.push(list_(buffer[0]))
                 self.push(error_(1))
@@ -335,19 +341,22 @@ class Stack():
                         self.push(list_(buffer[0]))
                         self.push(error_(2))
                         return
-                else:
+                elif(not (issubclass(type(buffer[0][i]),value_) and (type(buffer[0][i])!=list_ and type(buffer[0][i]))!=dict_)):
                     self.push(list_(buffer[0]))
                     self.push(error_(1))
                     return
             try:
                 buffer.append(self.stack[int(buffer[0][0])])
-                for i in range(1,len(buffer)):
-                    buffer[1]=buffer[1][int(buffer[0][i])]
-                if(int(buffer[0][-1])<0):
+                for i in range(1,len(buffer[0])-1):
+                    if(type(buffer[1])==list_):
+                        buffer[1]=buffer[1][int(buffer[0][i])]
+                    elif(type(buffer[1])==dict_):
+                        buffer[1]=buffer[1][buffer[0][i]]
+                if(type(buffer[1])==list_ and int(buffer[0][-1])<0):
                     buffer[0][-1]=num_(int(buffer[0][-1])+1)
                     if(int(buffer[0][-1])==0):
                         buffer[0][-1]=num_(len(self.stack))
-                buffer[1].insert(int(buffer[0][-1]),self.pop())
+                buffer[1].insert(buffer[0][-1],self.pop())
             except TypeError:
                 self.push(list_(buffer[0]))
                 self.push(error_(1))
