@@ -169,7 +169,7 @@ for i in range(n*2+1):
     s.arctan()
     print(f"tan(α)= {str(s.stack[-2]): <20}| {i-n: >3}*π/{n}= {str(s.stack[-3]): <20}| arctan(tan(α))= {str(s.stack[-1]): <19}")
 
-print("Test str to value",value("[None,4^2~3,True,'\\1\\55',\"test value()\",[False,0,\'abc\'],[0:\"0\",1:\"1\"] ,[type],{4}]"))# ,{₴}(→ @2 @2 + P p)
+print("Test str to value",value("[None,(4^2~3),True,'\\1\\55',\"test value()\",[False,0,\'abc\'],[0:\"0\",1:\"1\"] ,[type],{4}]"))# ,{₴}(→ @2 @2 + P p)
 print("Test value to str to value")
 print(none_(str_(none_(None))))
 print(num_(str_(num_(2E3+5j))))

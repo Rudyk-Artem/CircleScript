@@ -1,5 +1,103 @@
-from cmath import isnan,isinf
-from AuxiliaryFunctions import *
+from cmath import phase,isnan,isinf
+from math import log,pi
+errorCodes={Exception:0,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
+priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
+constants={"τ":6.2831853071795864,"π":3.1415926535897932,"e":2.7182818284590452,"φ":1.6180339887498948,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
+defaultValue={"+":(0,0),"-":(0,0),"*":(1,1),"/":(1,1),"↧":(constants["e"],1),"^":(2,1),"√":(2,1),"E":(1,0),"~":(-1,-1)}
+operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:Ln(a)/Ln(b),"^":lambda a,b:a**b,"√":lambda a,b:a**(1/b),
+            "E":lambda a,b:a*num_(10)**b,"~":lambda a,b:a*b,"n":lambda a:num_(a),"c":lambda a:num_(constants[a]),"d":lambda d:num_(defaultValue[d[0]][d[1]])}
+def is_number(s):
+    try:
+        num_(s)
+        return True
+    except:
+        return False
+class ExpressionTreeNode():
+    def __init__(self,v,d=("+",0)):
+        pl=[]
+        for i in range(len(v)):
+            if(set([v[i]])-set(priorityOfOperations.keys())==set()):
+                pl.append(priorityOfOperations[v[i]])
+        if(pl!=[]):
+            o=min(pl)
+            for i in range(len(v)):
+                try:
+                    if(priorityOfOperations[v[i]]==o):
+                        self.op=v[i]
+                        self.left=ExpressionTreeNode(v[:i],(v[i],0))
+                        self.right=ExpressionTreeNode(v[i+1:],(v[i],1))
+                        self.value=None
+                        break
+                except:
+                    pass
+        else:
+            if(set([v])-set(constants.keys())==set()):
+                self.op='c'
+                self.left=None
+                self.right=None
+                self.value=v
+            elif(is_number(v)):
+                self.op='n'
+                self.left=None
+                self.right=None
+                self.value=v
+            else:
+                self.op='d'
+                self.left=None
+                self.right=None
+                self.value=d
+    def count(self):
+        if(set([self.op])-set(operations.keys())==set()):
+            if(set([self.op])-set(priorityOfOperations.keys())==set()):
+                return operations[self.op](self.left.count(),self.right.count())
+            return operations[self.op](self.value)
+def value(v):
+    if(type(v)==str):
+        if(v[:4].capitalize()=="None"):
+            v=none_()
+        elif(v[:4].capitalize()=="True" or v[:5].capitalize()=="False"):
+            v=bool_(v)
+        elif(v[:1]=='"'):
+            v=str_(v[1:-1])
+        elif(v[:1]=="'"):
+            v=bytes_(v)
+        elif(v[:1]=='{'):
+            for i in range(1,len(v)):
+                if(v[i]=='@' or v[i]=='₴'):
+                    v=function_(v)
+                    break
+                elif(v[i]=='}'):
+                    v=error_(v)
+                    break
+        elif(v[:1]=='['):
+            if(set([v])-{"[none]","[num]","[bool]","[bytes]","[str]","[list]","[dict]","[function]","[type]","[error]"}==set()):
+                v=type_(v)
+            else:
+                for i in range(1,len(v)):
+                    if(v[i]==':'):
+                        v=dict_(v)
+                        break
+                    elif(v[i]==',' or v[i]=='['):
+                        v=list_(v)
+                        break
+        elif(set([v[:1]])-{'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅'}==set()):
+            v=num_(v)
+        elif(v[:1]=='('):
+            v=num_(ExpressionTreeNode(v[1:-1]).count())
+    try:
+        if(type(v)==type and set([v])-set(errorCodes.keys())==set()):
+            v=error_(v)
+        else:
+            baseValueTypes={type(None):none_,int:num_,float:num_,complex:num_,bool:bool_,bytes:bytes_,str:str_,list:list_,dict:dict_,type:type_}
+            v=baseValueTypes[type(v)](v)
+    except KeyError:
+        pass
+    if(issubclass(type(v),value_)):
+        return v
+    else:
+        raise ValueError
+
+
 class value_():
     def __init__(self,v):
         self.v=v
@@ -21,7 +119,7 @@ class num_(value_):
         if(type(n)==str_):
             n=str(n)[1:-1]
         if(type(n)==str):
-            n=n.replace('∞','inf').replace('∅','nan').replace('*i','j')
+            n=n.replace('∞','inf').replace('∅','nan').replace('i','j').replace('jnf','inf')
         if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
             n=abs(complex(n))
         self.n=complex(n)
@@ -35,7 +133,7 @@ class num_(value_):
             i=str(self.n.imag).replace('e','E')
             if(float(i)%1==0):
                 i=i.replace('.0','')
-            return i+'*i'
+            return i+'i'
         else:
             r=str(self.n.real).replace('e','E')
             i=str(self.n.imag).replace('e','E')
@@ -45,7 +143,7 @@ class num_(value_):
                 i=i.replace('.0','')
             if(float(i)>=0):
                 i='+'+i
-            return r+i+'*i'
+            return r+i+'i'
     def __int__(self):
         if(self.isInteger()):
             return int(self.n.real)
@@ -67,6 +165,33 @@ class num_(value_):
             self.n=complex(round(self.n.real,n),round(self.n.imag,n))
             return self
         raise ValueError
+    def __add__(self,other):
+        return num_(self.n+other.n)
+    def __sub__(self,other):
+        return num_(self.n-other.n)
+    def __mul__(self,other):
+        return num_(self.n*other.n)
+    def __truediv__(self,other):
+        if(other.n==0):
+            if(self.n==0 or isnan(self.n)):
+                return num_('nan')
+            else:
+                return num_('inf')
+        else:
+            return num_(self.n/other.n)
+    def __pow__(self,other):
+        if(isnan(other.n) or isnan(self.n) or (other.n==0 and (self.n==0 or isinf(self.n))) or (isinf(other.n) and isinf(self.n))):
+            return num_('nan')
+        elif(((other.n.imag!=0 or other.n.real<0) and self.n==0) or ((other.n.real>0) and isinf(self.n)) or (isinf(other.n) and (self.n!=1))):
+            return num_('inf')
+        elif((other.n.real<0) and isinf(self.n)):
+            return num_(0)
+        else:
+            return num_(self.n**other.n)
+    def Ln(self,k=0):
+        if(self.n==0):
+            return num_('nan')
+        return num_(log(abs(self.n))+1j*(phase(self.n)+2*pi*k))
     def isInteger(self):
         return (self.n.imag==0 and self.n.real%1==0 and abs(self.n.real)<9007199254740992)
     def isReal(self):
@@ -305,7 +430,12 @@ class error_(value_):
                 code=errorCodes[code]
             except KeyError:
                 code=0
-        self.code=int(code)
+        if(0<=int(code) and int(code)<=7):
+            self.code=int(code)
+        elif(int(code)==8):
+            exit()
+        else:
+            raise ValueError
     def __str__(self):
         return "{"+str(self.code)+"}"
     def __eq__(self,other):
