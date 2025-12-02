@@ -278,7 +278,22 @@ class Stack():
     def concatenate(self):
         pass
     def push(self,v):
-        self.stack.append(value(v))
+        if((type(v)==str and v[:1]=='⟨') or (type(v)==str_ and str(v[1:2])=='⟨')):
+            if(type(v)==str_):
+                v=str(v)[1:-1]
+            s,f=0,0
+            while v.count("; ")+v.count(" ;")+v.count("⟨ ")+v.count(" ⟩")>0:
+                v=v.replace("; ", ";")
+                v=v.replace(" ;", ";")
+                v=v.replace("⟨ ", "⟨")
+                v=v.replace(" ⟩", "⟩")
+            for i in range(len(v)):
+                if(v[i]==";" or v[i]=="⟩"):
+                    s=f
+                    f=i
+                    self.stack.append(value(v[s+1:f]))
+        else:
+            self.stack.append(value(v))
     def pop(self):
         return self.stack.pop()
     def copy(self):
@@ -412,6 +427,7 @@ class Stack():
         except RecursionError:
             self.push(error_(7))
     def type(self):
-        pass
+        self.push(type_(type(self.pop())))
     def format(self):
-        pass
+        if(type(self.stack[-1])==type_):
+            self.push(self.pop().t(self.pop()))

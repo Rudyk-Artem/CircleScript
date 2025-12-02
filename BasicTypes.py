@@ -4,7 +4,7 @@ errorCodes={Exception:0,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxE
 priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
 constants={"τ":6.2831853071795864,"π":3.1415926535897932,"e":2.7182818284590452,"φ":1.6180339887498948,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
 defaultValue={"+":(0,0),"-":(0,0),"*":(1,1),"/":(1,1),"↧":(constants["e"],1),"^":(2,1),"√":(2,1),"E":(1,0),"~":(-1,-1)}
-operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:Ln(a)/Ln(b),"^":lambda a,b:a**b,"√":lambda a,b:a**(1/b),
+operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:a.Ln()/b.Ln(),"^":lambda a,b:a**b,"√":lambda a,b:a**(num_(1)/b),
             "E":lambda a,b:a*num_(10)**b,"~":lambda a,b:a*b,"n":lambda a:num_(a),"c":lambda a:num_(constants[a]),"d":lambda d:num_(defaultValue[d[0]][d[1]])}
 def is_number(s):
     try:
@@ -80,10 +80,8 @@ def value(v):
                     elif(v[i]==',' or v[i]=='['):
                         v=list_(v)
                         break
-        elif(set([v[:1]])-{'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅'}==set()):
+        elif(set([v[:1]])-{'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅','('}==set()):
             v=num_(v)
-        elif(v[:1]=='('):
-            v=num_(ExpressionTreeNode(v[1:-1]).count())
     try:
         if(type(v)==type and set([v])-set(errorCodes.keys())==set()):
             v=error_(v)
@@ -96,8 +94,6 @@ def value(v):
         return v
     else:
         raise ValueError
-
-
 class value_():
     def __init__(self,v):
         self.v=v
@@ -119,7 +115,10 @@ class num_(value_):
         if(type(n)==str_):
             n=str(n)[1:-1]
         if(type(n)==str):
-            n=n.replace('∞','inf').replace('∅','nan').replace('i','j').replace('jnf','inf')
+            if(n[:1]=='('):
+                n=num_(ExpressionTreeNode(n[1:-1]).count())
+            else:
+                n=n.replace('∞','inf').replace('∅','nan').replace('~i','j')
         if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
             n=abs(complex(n))
         self.n=complex(n)
@@ -133,7 +132,7 @@ class num_(value_):
             i=str(self.n.imag).replace('e','E')
             if(float(i)%1==0):
                 i=i.replace('.0','')
-            return i+'i'
+            return i+'~i'
         else:
             r=str(self.n.real).replace('e','E')
             i=str(self.n.imag).replace('e','E')
@@ -143,7 +142,7 @@ class num_(value_):
                 i=i.replace('.0','')
             if(float(i)>=0):
                 i='+'+i
-            return r+i+'i'
+            return r+i+'~i'
     def __int__(self):
         if(self.isInteger()):
             return int(self.n.real)
@@ -243,9 +242,12 @@ class bytes_(value_):
                     s=i
                     l.append(ord(b[i]))
             b=l
+        if(type(b)==list_):
+            b=list(b)
         if(type(b)==list):
             i=0
             while i<len(b):
+                b[i]=int(b[i])
                 if(b[i]>255):
                     n=b.pop(i)
                     while n>0:
@@ -256,7 +258,7 @@ class bytes_(value_):
     def __str__(self):
         s="'"
         for i in range(len(self.b)):
-            s=s+'\\'+'0'*(1-int(self.b[i])//16)+hex(int(self.b[i]))[2:]
+            s=s+'\\'+'0'*(1-int(self.b[i])//16)+hex(int(self.b[i]))[2:].upper()
         return s+"'"
     def __bytes__(self):
         return self.b
@@ -396,6 +398,8 @@ class function_(value_):
         pass
     def __eq__(self,other):
         return self.f==other.f
+    def do(self):
+        pass
 class type_(value_):
     def __init__(self,t):
         if(type(t)==str_):
