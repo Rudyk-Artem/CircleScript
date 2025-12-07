@@ -239,44 +239,261 @@ class Stack():
         else:
             self.push(error_(1))
     def not_(self):
-        if(type(self.stack[-1])==bool_):
-            self.push(bool_(not bool(self.pop())))
-        else:
+        try:
+            if(type(self.stack[-1])==bool_):
+                buffer=self.pop()
+                self.push(bool_(not bool(buffer)))
+            elif(type(self.stack[-1])==num_):
+                buffer=self.pop()
+                self.push(num_(~ int(buffer)))
+            elif(type(self.stack[-1])==bytes_):
+                buffer=self.pop()
+                l=list(bytes(buffer))
+                for i in range(len(l)):
+                    l[i]=~l[i]%256
+                self.push(bytes_(l))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
             self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
+            self.push(error_(2))
     def and_(self):
-        if(type(self.stack[-1])==bool_ and type(self.stack[-2])==bool_):
-            buffer=[bool(self.pop()),bool(self.pop())]
-            self.push(bool_(buffer[0] and buffer[1]))
-        else:
+        try:
+            if(type(self.stack[-1])==bool_ and type(self.stack[-2])==bool_):
+                buffer=[self.pop(),self.pop()]
+                self.push(bool_(bool(buffer[0]) and bool(buffer[1])))
+            elif(type(self.stack[-1])==num_ and type(self.stack[-2])==num_):
+                buffer=[self.pop(),self.pop()]
+                self.push(num_(int(buffer[0]) & int(buffer[1])))
+            elif(type(self.stack[-1])==bytes_ and type(self.stack[-2])==bytes_):
+                buffer=[self.pop(),self.pop()]
+                l1=list(bytes(buffer[0]))
+                l2=list(bytes(buffer[1]))
+                if(len(l1)<len(l2)):
+                    l1=[0]*(len(l2)-len(l1))+l1
+                elif(len(l1)>len(l2)):
+                    l2=[0]*(len(l1)-len(l2))+l2
+                for i in range(len(l1)):
+                    l1[i]=(l1[i] & l2[i])%256
+                self.push(bytes_(l1))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
             self.push(error_(1))
+        except ValueError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(2))
     def or_(self):
-        if(type(self.stack[-1])==bool_ and type(self.stack[-2])==bool_):
-            buffer=[bool(self.pop()),bool(self.pop())]
-            self.push(bool_(buffer[0] or buffer[1]))
-        else:
+        try:
+            if(type(self.stack[-1])==bool_ and type(self.stack[-2])==bool_):
+                buffer=[self.pop(),self.pop()]
+                self.push(bool_(bool(buffer[0]) or bool(buffer[1])))
+            elif(type(self.stack[-1])==num_ and type(self.stack[-2])==num_):
+                buffer=[self.pop(),self.pop()]
+                self.push(num_(int(buffer[0]) | int(buffer[1])))
+            elif(type(self.stack[-1])==bytes_ and type(self.stack[-2])==bytes_):
+                buffer=[self.pop(),self.pop()]
+                l1=list(bytes(buffer[0]))
+                l2=list(bytes(buffer[1]))
+                if(len(l1)<len(l2)):
+                    l1=[0]*(len(l2)-len(l1))+l1
+                elif(len(l1)>len(l2)):
+                    l2=[0]*(len(l1)-len(l2))+l2
+                for i in range(len(l1)):
+                    l1[i]=(l1[i] | l2[i])%256
+                self.push(bytes_(l1))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
             self.push(error_(1))
+        except ValueError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(2))
     def xor(self):
-        if(type(self.stack[-1])==bool_ and type(self.stack[-2])==bool_):
-            buffer=[bool(self.pop()),bool(self.pop())]
-            self.push(bool_(not(buffer[0] or not(buffer[0] or buffer[1])) or not(not(buffer[0] or buffer[1]) or buffer[1])))
-        else:
+        try:
+            if(type(self.stack[-1])==bool_ and type(self.stack[-2])==bool_):
+                buffer=[self.pop(),self.pop()]
+                self.push(bool_(not(bool(buffer[0]) or not(bool(buffer[0]) or bool(buffer[1]))) or not(not(bool(buffer[0]) or bool(buffer[1])) or bool(buffer[1]))))
+            elif(type(self.stack[-1])==num_ and type(self.stack[-2])==num_):
+                buffer=[self.pop(),self.pop()]
+                self.push(num_(int(buffer[0]) ^ int(buffer[1])))
+            elif(type(self.stack[-1])==bytes_ and type(self.stack[-2])==bytes_):
+                buffer=[self.pop(),self.pop()]
+                l1=list(bytes(buffer[0]))
+                l2=list(bytes(buffer[1]))
+                if(len(l1)<len(l2)):
+                    l1=[0]*(len(l2)-len(l1))+l1
+                elif(len(l1)>len(l2)):
+                    l2=[0]*(len(l1)-len(l2))+l2
+                for i in range(len(l1)):
+                    l1[i]=(l1[i] ^ l2[i])%256
+                self.push(bytes_(l1))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
             self.push(error_(1))
+        except ValueError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(2))
     def write(self):
-        pass
+        try:
+            if((((type(self.stack[-3])==bytes_ and type(self.stack[-2])==bytes_) or (type(self.stack[-3])==str_ and type(self.stack[-2])==str_) or type(self.stack[-3])==list_) and type(self.stack[-1])==num_) or type(self.stack[-3])==dict_):
+                buffer=[self.pop(),self.pop()]
+                self.stack[-1][buffer[0]]=buffer[1]
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(1))
+        except ValueError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(2))
+        except IndexError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(3))
+        except KeyError:
+            self.push(num_(buffer[1]))
+            self.push(num_(buffer[0]))
+            self.push(error_(4))
     def find(self):
-        pass
+        try:
+            if((type(self.stack[-2])==bytes_ and type(self.stack[-1])==bytes_) or (type(self.stack[-2])==str_ and type(self.stack[-1])==str_) or type(self.stack[-2])==list_ or type(self.stack[-2])==dict_):
+                buffer=self.pop()
+                self.push(self.stack[-1].find(buffer))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
+            self.push(error_(2))
+        except IndexError:
+            self.push(buffer)
+            self.push(error_(3))
+        except KeyError:
+            self.push(buffer)
+            self.push(error_(4))
     def append(self):
-        pass
+        try:
+            if(type(self.stack[-2])==bytes_ or type(self.stack[-2])==str_ or type(self.stack[-2])==list_):
+                buffer=self.pop()
+                self.stack[-1]=self.stack[-1]+(type(self.stack[-1]))(buffer)
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
+            self.push(error_(2))
+        except IndexError:
+            self.push(buffer)
+            self.push(error_(3))
+        except KeyError:
+            self.push(buffer)
+            self.push(error_(4))
     def delete(self):
-        pass
+        try:
+            if(((type(self.stack[-2])==bytes_ or type(self.stack[-2])==str_ or type(self.stack[-2])==list_) and type(self.stack[-1])==num_) or type(self.stack[-2])==dict_):
+                buffer=self.pop()
+                self.stack[-1].pop(buffer)
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
+            self.push(error_(2))
+        except IndexError:
+            self.push(buffer)
+            self.push(error_(3))
+        except KeyError:
+            self.push(buffer)
+            self.push(error_(4))
     def read(self):
-        pass
+        try:
+            if((type(self.stack[-2])==bytes_ or type(self.stack[-2])==str_ or type(self.stack[-2])==list_) and type(self.stack[-1])==num_):
+                buffer=self.pop()
+                self.push(self.stack[-1][int(buffer)])
+            elif(type(self.stack[-2])==dict_):
+                buffer=self.pop()
+                self.push(self.stack[-1][buffer])
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
+            self.push(error_(2))
+        except IndexError:
+            self.push(buffer)
+            self.push(error_(3))
+        except KeyError:
+            self.push(buffer)
+            self.push(error_(4))
     def len(self):
-        pass
+        try:
+            if(type(self.stack[-1])==bytes_ or type(self.stack[-1])==str_ or type(self.stack[-1])==list_ or type(self.stack[-1])==dict_):
+                buffer=self.pop()
+                self.push(len(buffer))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
+            self.push(error_(2))
     def substring(self):
-        pass
+        try:
+            if((type(self.stack[-3])==bytes_ or type(self.stack[-3])==str_ or type(self.stack[-3])==list_) and type(self.stack[-2])==num_ and type(self.stack[-1])==num_):
+                buffer=[self.pop(),self.pop(),self.pop()]
+                self.push(buffer[2].sub(buffer[1],buffer[0]))
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer[2])
+            self.push(buffer[1])
+            self.push(buffer[0])
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer[2])
+            self.push(buffer[1])
+            self.push(buffer[0])
+            self.push(error_(2))
     def concatenate(self):
-        pass
+        try:
+            if((type(self.stack[-1])==bytes_ and type(self.stack[-2])==bytes_) or (type(self.stack[-1])==str_ and type(self.stack[-2])==str_) or (type(self.stack[-1])==list_ and type(self.stack[-2])==list_) or (type(self.stack[-1])==dict_ and type(self.stack[-2])==dict_)):
+                buffer=[self.pop(),self.pop()]
+                self.push(buffer[1]+buffer[0])
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer[1])
+            self.push(buffer[0])
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer[1])
+            self.push(buffer[0])
+            self.push(error_(2))
     def push(self,v):
         if((type(v)==str and v[:1]=='⟨') or (type(v)==str_ and str(v[1:2])=='⟨')):
             if(type(v)==str_):
@@ -305,7 +522,7 @@ class Stack():
     def Tswap(self):
         self.stack.insert(-2,self.pop())
     def moveUp(self):
-        if(type(self.stack[-1])==num_):
+        if(type(self.stack[-1])==num_ and self.stack[-1].isInteger()):
             self.push(self.stack.pop(self.stack.pop()))
         elif(type(self.stack[-1])==list_):
             buffer=[list(self.stack.pop())]
@@ -342,7 +559,7 @@ class Stack():
         else:
             self.push(error_(1))
     def moveDown(self):
-        if(type(self.stack[-1])==int):
+        if(type(self.stack[-1])==num_  and self.stack[-1].isInteger()):
             self.stack.insert(self.pop(),self.pop())
         elif(type(self.stack[-1])==list_):
             buffer=[self.stack.pop()]
@@ -388,7 +605,7 @@ class Stack():
         self.push(str_(input()))
     def doNamedFun(self):
         try:
-            if(type(-self.stack[-1])==str_):
+            if(type(self.stack[-1])==str_):
                 NamedFunction[str(self.pop())[1:-1]].do()
             else:
                 self.push(error_(1))
@@ -430,4 +647,11 @@ class Stack():
         self.push(type_(type(self.pop())))
     def format(self):
         if(type(self.stack[-1])==type_):
-            self.push(self.pop().t(self.pop()))
+            try:
+                self.push(self.pop().t(self.pop()))
+            except TypeError:
+                self.push(error_(1))
+            except ValueError:
+                self.push(error_(2))
+        else:
+            self.push(error_(1))

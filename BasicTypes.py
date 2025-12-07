@@ -53,9 +53,9 @@ class ExpressionTreeNode():
             return operations[self.op](self.value)
 def value(v):
     if(type(v)==str):
-        if(v[:4].capitalize()=="None"):
+        if(v[:4].lower()=="none" or v[:1].lower()=="n"):
             v=none_()
-        elif(v[:4].capitalize()=="True" or v[:5].capitalize()=="False"):
+        elif(v[:4].lower()=="true" or v[:5].lower()=="false" or v[:1].lower()=="t" or v[:1].lower()=="f"):
             v=bool_(v)
         elif(v[:1]=='"'):
             v=str_(v[1:-1])
@@ -117,6 +117,8 @@ class num_(value_):
         if(type(n)==str):
             if(n[:1]=='('):
                 n=num_(ExpressionTreeNode(n[1:-1]).count())
+            elif(n==""):
+                n=0
             else:
                 n=n.replace('∞','inf').replace('∅','nan').replace('~i','j')
         if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
@@ -202,19 +204,16 @@ class bool_(value_):
         if(type(b)==str_):
             b=str(b)[1:-1]
         if(type(b)==str):
-            if(b=="True" or b=="true"):
+            if(b.lower()=="true" or b.lower()=="t"):
                 b=True
-            elif(b=="False" or b=="false"):
+            elif(b.lower()=="false" or b.lower()=="f"):
                 b=False
         if(type(b)==int):
             if(b==1):
                 b=True
             elif(b==0):
                 b=False
-        if(type(b)==bool):
-            self.b=bool(b)
-        else:
-            raise ValueError
+        self.b=bool(b)
     def __str__(self):
         if(self.b):
             return "True"
@@ -264,8 +263,24 @@ class bytes_(value_):
         return self.b
     def __eq__(self,other):
         return self.b==other.b
+    def __len__(self):
+        return len(self.b)
+    def __getitem__(self,i):
+        return self.b[i]
+    def __setitem__(self,i,v):
+        self.b=self.b[:int(i)]+bytes(v)+self.b[int(i)+1:]
+    def pop(self,i):
+        buffer=self.b[int(i)]
+        self.b=self.b[:int(i)]+self.b[int(i)+1:]
+        return buffer
     def __hash__(self):
         return hash(self.b)
+    def __add__(self,other):
+        return bytes_(self.b+other.b)
+    def sub(self,s,f):
+        return bytes_(self.b[int(s):int(f)])
+    def find(self,v):
+        return self.b.find(bytes(v))
 class str_(value_):
     def __init__(self,s):
         if(type(s)==str_):
@@ -275,8 +290,28 @@ class str_(value_):
         return '"'+self.s+'"'
     def __eq__(self,other):
         return self.s==other.s
+    def __len__(self):
+        return len(self.s)
+    def __getitem__(self,i):
+        return self.s[i]
+    def __setitem__(self,i,v):
+        if(type(v)==type(self)):
+            v=str(v)[1:-1]
+        self.s=self.s[:int(i)]+v+self.s[int(i)+1:]
+    def pop(self,i):
+        buffer=self.s[int(i)]
+        self.s=self.s[:int(i)]+self.s[int(i)+1:]
+        return buffer
     def __hash__(self):
         return hash(self.s)
+    def __add__(self,other):
+        return str_(self.s+other.s)
+    def sub(self,s,f):
+        return str_(self.s[int(s):int(f)])
+    def find(self,v):
+        if(type(v)==type(self)):
+            v=str(v)[1:-1]
+        return self.s.find(str(v))
 class list_(value_):
     def __init__(self,l):
         if(type(l)==str_):
@@ -289,22 +324,29 @@ class list_(value_):
                 l=l.replace(" ,", ",")
                 l=l.replace("[ ", "[")
                 l=l.replace(" ]", "]")
-            for i in range(len(l)):
-                if(l[i]=="["):
-                    r+=1
-                elif((l[i]=="," or l[i]=="]") and r==1):
-                    s=f
-                    f=i
-                    nl.append(value(l[s+1:f]))
-                elif(l[i]=="]"):
-                    r-=1
-            l=nl
+            if(l=="[]" or l==""):
+                l=list()
+            else:
+                for i in range(len(l)):
+                    if(l[i]=="["):
+                        r+=1
+                    elif((l[i]=="," or l[i]=="]") and r==1):
+                        s=f
+                        f=i
+                        nl.append(value(l[s+1:f]))
+                    elif(l[i]=="]"):
+                        r-=1
+                l=nl
         if(type(l)==list):
             for i in range(len(l)):
                 l[i]=value(l[i])
+        if(type(l)!=list):
+            l=[l,]
         self.l=list(l)
         self.i=0
     def __str__(self):
+        if(self.l==list()):
+            return "[]"
         s="["
         for i in self.l:
             s=s+str(i)+", "
@@ -324,13 +366,22 @@ class list_(value_):
     def __getitem__(self,i):
         return self.l[i]
     def __setitem__(self,i,v):
-        self.l[i]=v
+        self.l[int(i)]=v
     def pop(self,i):
         return self.l.pop(int(i))
     def insert(self,i,v):
         self.l.insert(int(i),v)
     def __eq__(self,other):
         return self.l==other.l
+    def __add__(self,other):
+        return list_(self.l+other.l)
+    def sub(self,s,f):
+        return list_(self.l[int(s):int(f)])
+    def find(self,v):
+        try:
+            return self.l.index(v)
+        except ValueError:
+            return num_(-1)
 class dict_(value_):
     def __init__(self,d):
         if(type(d)==str_):
@@ -343,18 +394,21 @@ class dict_(value_):
                 d=d.replace(" ,", ",")
                 d=d.replace("[ ", "[")
                 d=d.replace(" ]", "]")
-            for i in range(len(d)):
-                if(d[i]=="["):
-                    r+=1
-                elif(d[i]==":" and r==1):
-                    m=i
-                elif((d[i]=="," or d[i]=="]") and r==1):
-                    s=f
-                    f=i
-                    l.append((value(d[s+1:m]),value(d[m+1:f])))
-                elif(d[i]=="]"):
-                    r-=1
-            d=dict(l)
+            if(d=="[]" or d==""):
+                d=dict()
+            else:
+                for i in range(len(d)):
+                    if(d[i]=="["):
+                        r+=1
+                    elif(d[i]==":" and r==1):
+                        m=i
+                    elif((d[i]=="," or d[i]=="]") and r==1):
+                        s=f
+                        f=i
+                        l.append((value(d[s+1:m]),value(d[m+1:f])))
+                    elif(d[i]=="]"):
+                        r-=1
+                d=dict(l)
         if(type(d)==dict):
             nd={}
             for k,i in d.items():
@@ -363,6 +417,8 @@ class dict_(value_):
         self.d=dict(d)
         self.i=0
     def __str__(self):
+        if(self.d==dict()):
+            return "[]"
         s="["
         for k,i in self.d.items():
             s=s+str(k)+":"+str(i)+", "
@@ -391,6 +447,12 @@ class dict_(value_):
         self.d[k]=v
     def __eq__(self,other):
         return self.d==other.d
+    def __add__(self,other):
+        for k,i in other.d.items():
+            self.d[k]=i
+        return self
+    def find(self,fv):
+        return (lambda l: l[0] if len(l)>0 else num_(-1))([k for k,v in self.d.items() if v==fv])
 class function_(value_):
     def __init__(self):
         pass
@@ -410,7 +472,11 @@ class type_(value_):
                             "[list]":list_,"[dict]":dict_,"[function]":function_,"[type]":type_,"[error]":error_}
                 t=valueTypes[t]
             except KeyError:
-                raise ValueError
+                if(t=="[]" or t==""):
+                    self.t=None
+                    return
+                else:
+                    raise ValueError
         if(type(t)!=type):
             t=type(t)
         if(issubclass(t,value_)):
@@ -428,7 +494,10 @@ class error_(value_):
         if(type(code)==str_):
             code=str(code)[1:-1]
         if(type(code)==str):
-            code=int(code[1:-1])
+            try:
+                code=int(code[1:-1])
+            except ValueError:
+                code=0
         if(type(code)==type and set([code])-set(errorCodes.keys())==set()):
             try:
                 code=errorCodes[code]
