@@ -508,9 +508,9 @@ class Stack():
                 if(v[i]==";" or v[i]=="⟩"):
                     s=f
                     f=i
-                    self.stack.append(value(v[s+1:f]))
+                    self.stack.append(value(v[s+1:f],self))
         else:
-            self.stack.append(value(v))
+            self.stack.append(value(v,self))
     def pop(self):
         return self.stack.pop()
     def copy(self):
@@ -598,7 +598,7 @@ class Stack():
             self.push(error_(1))
     def print(self):
         if(type(self.stack[-1])==str_):
-            print(self.stack.pop())
+            print(str(self.stack.pop())[1:-1])
         else:
             self.push(error_(1))
     def enter(self):
