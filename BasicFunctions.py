@@ -496,19 +496,10 @@ class Stack():
             self.push(error_(2))
     def push(self,v):
         if((type(v)==str and v[:1]=='⟨') or (type(v)==str_ and str(v[1:2])=='⟨')):
-            if(type(v)==str_):
-                v=str(v)[1:-1]
-            s,f=0,0
-            while v.count("; ")+v.count(" ;")+v.count("⟨ ")+v.count(" ⟩")>0:
-                v=v.replace("; ", ";")
-                v=v.replace(" ;", ";")
-                v=v.replace("⟨ ", "⟨")
-                v=v.replace(" ⟩", "⟩")
+            v=value(v)
+        if(type(v)==Sequence):
             for i in range(len(v)):
-                if(v[i]==";" or v[i]=="⟩"):
-                    s=f
-                    f=i
-                    self.stack.append(value(v[s+1:f],self))
+                self.stack.append(value(v[i],self))
         else:
             self.stack.append(value(v,self))
     def pop(self):
@@ -547,9 +538,12 @@ class Stack():
                         self.push(list_(buffer[0]))
                         self.push(error_(1))
                 self.push(buffer[1].pop(buffer[0][-1]))
-            except TypeError:
+            except (TypeError,AttributeError):
                 self.push(list_(buffer[0]))
                 self.push(error_(1))
+            except ValueError:
+                self.push(list_(buffer[0]))
+                self.push(error_(2))
             except IndexError:
                 self.push(list_(buffer[0]))
                 self.push(error_(3))
@@ -585,9 +579,12 @@ class Stack():
                     if(int(buffer[0][-1])==0):
                         buffer[0][-1]=num_(len(self.stack))
                 buffer[1].insert(buffer[0][-1],self.pop())
-            except TypeError:
+            except (TypeError,AttributeError):
                 self.push(list_(buffer[0]))
                 self.push(error_(1))
+            except ValueError:
+                self.push(list_(buffer[0]))
+                self.push(error_(2))
             except IndexError:
                 self.push(list_(buffer[0]))
                 self.push(error_(3))
@@ -598,35 +595,58 @@ class Stack():
             self.push(error_(1))
     def print(self):
         if(type(self.stack[-1])==str_):
-            print(str(self.stack.pop())[1:-1])
+            print(str(self.stack.pop())[1:-1],end="")
         else:
             self.push(error_(1))
     def enter(self):
         self.push(str_(input()))
-    def doNamedFun(self):
+    def addNamedFun(self):
         try:
-            if(type(self.stack[-1])==str_):
-                NamedFunction[str(self.pop())[1:-1]].do()
+            if(type(self.stack[-1])==str_ and type(self.stack[-2])==function_):
+                buffer=[self.pop(),self.pop()]
+                NamedFunction[buffer[0]]=buffer[1]
             else:
                 self.push(error_(1))
         except TypeError:
+            self.push(buffer[1])
+            self.push(buffer[0])
             self.push(error_(1))
         except ValueError:
+            self.push(buffer[1])
+            self.push(buffer[0])
+            self.push(error_(2))
+    def doNamedFun(self):
+        try:
+            if(type(self.stack[-1])==str_):
+                buffer=self.pop()
+                NamedFunction[buffer].do()
+            else:
+                self.push(error_(1))
+        except TypeError:
+            self.push(buffer)
+            self.push(error_(1))
+        except ValueError:
+            self.push(buffer)
             self.push(error_(2))
         except IndexError:
+            self.push(buffer)
             self.push(error_(3))
         except KeyError:
+            self.push(buffer)
             self.push(error_(4))
         except SyntaxError:
+            self.push(buffer)
             self.push(error_(5))
         except ArithmeticError:
+            self.push(buffer)
             self.push(error_(6))
         except RecursionError:
+            self.push(buffer)
             self.push(error_(7))
     def doFun(self):
         try:
-            if(type(self.stack[-1])==num_ and type(self.stack[-self.stack[-1]-2])==function_):
-                self.stack[-self.pop()-1].do()
+            if(type(self.stack[-1])==num_ and type(self.stack[int(num_(-2)-self.stack[-1])])==function_):
+                self.stack[int(num_(-1)-self.pop())].do()
             else:
                 self.push(error_(1))
         except TypeError:

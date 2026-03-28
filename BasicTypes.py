@@ -2,9 +2,9 @@ from cmath import phase,isnan,isinf
 from math import log,pi
 errorCodes={Exception:0,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
 priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
-constants={"τ":6.2831853071795864,"π":3.1415926535897932,"e":2.7182818284590452,"φ":1.6180339887498948,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
+constants={"π":3.1415926535897932,"e":2.7182818284590452,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
 defaultValue={"+":(0,0),"-":(0,0),"*":(1,1),"/":(1,1),"↧":(constants["e"],1),"^":(2,1),"√":(2,1),"E":(1,0),"~":(-1,-1)}
-signatureNumber={'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅','('}
+signatureNumber={'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅'}
 operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:a.Ln()/b.Ln(),"^":lambda a,b:a**b,"√":lambda a,b:a**(num_(1)/b),
             "E":lambda a,b:a*num_(10)**b,"~":lambda a,b:a*b,"n":lambda a:num_(a),"c":lambda a:num_(constants[a]),"d":lambda d:num_(defaultValue[d[0]][d[1]])}
 def is_number(s):
@@ -54,15 +54,17 @@ class ExpressionTreeNode():
             return operations[self.op](self.value)
 def value(v,s=None):
     if(type(v)==str):
-        if(v[:4].lower()=="none" or v[:1].lower()=="n"):
-            v=none_()
-        elif(v[:4].lower()=="true" or v[:5].lower()=="false" or v[:1].lower()=="t" or v[:1].lower()=="f"):
+        if(v[:1]=="⟨"):
+            v=Sequence(v)
+        elif(v.lower()=="none"):
+            v=none_(v)
+        elif(v.lower()=="true" or v.lower()=="false"):
             v=bool_(v)
         elif(v[:1]=='"'):
             v=str_(v[1:-1])
         elif(v[:1]=="'"):
             v=bytes_(v)
-        elif(v[:1]=='(' and v.count("→")+v.count("⇀")>0):
+        elif(v[:1]=='(' and v.count("→")+v.count("⇀")+v.count("⇁")>0):
             v=function_(v,s)
         elif(v[:1]=='{'):
             if(v.count('(')>0):
@@ -80,29 +82,173 @@ def value(v,s=None):
                     elif(v[i]==',' or v[i]=='['):
                         v=list_(v,s)
                         break
-        elif(set([v[:1]])-signatureNumber==set()):
+        elif(set([v[:1]])-(signatureNumber|{'('})==set()):
             v=num_(v)
     try:
         if(type(v)==type and set([v])-set(errorCodes.keys())==set()):
             v=error_(v)
         else:
             baseValueTypes={type(None):none_,int:num_,float:num_,complex:num_,bool:bool_,bytes:bytes_,str:str_,list:list_,dict:dict_,type:type_}
-            v=baseValueTypes[type(v)](v)
+            v=baseValueTypes[type(v)](v,s)
     except KeyError:
         pass
-    if(issubclass(type(v),value_)):
+    if(issubclass(type(v),value_) or type(v)==Sequence):
         return v
     else:
         raise ValueError
+class Code():
+    def __init__(self,c,s,b=0,ef=(lambda:None)):
+#         print(f"{c} , {s} , {b} , {ef}")
+        functions={"+":lambda s=s:s.plus(),"-":lambda s=s:s.minus(),"*":lambda s=s:s.mult(),"/":lambda s=s:s.div(),"^":lambda s=s:s.exp(),"↧":lambda s=s:s.log(),
+                   "↕":lambda s=s:s.abs(),"o":lambda s=s:s.round(),"R":lambda s=s:s.random(),"s":lambda s=s:s.sin(),"c":lambda s=s:s.cos(),"t":lambda s=s:s.tan(),
+                   "S":lambda s=s:s.arcsin(),"C":lambda s=s:s.arccos(),"T":lambda s=s:s.arctan(),"=":lambda s=s:s.eq(),"<":lambda s=s:s.lt(),">":lambda s=s:s.gt(),
+                   "¬":lambda s=s:s.not_(),"⋀":lambda s=s:s.and_(),"∨":lambda s=s:s.or_(),"⊕":lambda s=s:s.xor(),"w":lambda s=s:s.write(),"f":lambda s=s:s.find(),
+                   "a":lambda s=s:s.append(),"d":lambda s=s:s.delete(),"r":lambda s=s:s.read(),"l":lambda s=s:s.len(),"u":lambda s=s:s.substring(),"&":lambda s=s:s.concatenate(),
+                   "@":lambda s=s:s.push(),"D":lambda s=s:s.pop(),"$":lambda s=s:s.copy(),"L":lambda s=s:s.size(),"%":lambda s=s:s.Bswap(),"‰":lambda s=s:s.Tswap(),
+                   "↑":lambda s=s:s.moveUp(),"↓":lambda s=s:s.moveDown(),"p":lambda s=s:s.print(),"e":lambda s=s:s.enter(),"№":lambda s=s:s.addNamedFun(),
+                   "§":lambda s=s:s.doNamedFun(),"!":lambda s=s:s.doFun(),"?":lambda s=s:s.type(),"F":lambda s=s:s.format(),"↪":lambda:"break"}
+        code=[]
+        p=["",False,'']
+        f=["",False,0]
+        r={'"':0,"'":0,"[":0,"{":0,"(":0,"⟨":0}
+        for i in range(len(c)):
+            l=c[(i+b)%len(c)]
+#             print(l,r,p,f)
+            if(p[1]):
+                if(set([l])-{"[","{","(","⟨"}==set() or (l=='"' and r['"']==0) or (l=="'" and r["'"]==0)):
+                    r[l]+=1
+                elif(set([l])-{'"',"'","]","}",")","⟩"}==set()):
+                    r[l.replace("]","[").replace("}","{").replace(")","(").replace("⟩","⟨")]-=1
+                if((p[2]=='"' and l=='"' and r['"']==0) or (p[2]=="'" and l=="'" and r["'"]==0) or (p[2]=='[' and l==']' and r['[']==0) or (p[2]=='{' and (l=='}' or l==')') and r['{']==0 and c[(i+b+1)%len(c)]!='(') or (p[2]=='⟨' and l=='⟩' and r['⟨']==0) or (p[2]=='(' and (l==')' or l=='}') and r['(']==0 and c[(i+b+1)%len(c)]!='{') or (set([p[2]])-signatureNumber==set() and set([l])-(signatureNumber|{'E','.','~','j','f','a'})!=set()) or ((p[2]=='n' or p[2]=='t' or p[2]=='f') and l==' ') or (i==len(c)-1) or (set([p[2]])-{'"',"'","[","{","(","⟨"}!=set() and l=="@")):
+                    if(l!=' ' and l!='→' and l!='⇀' and l!='⇁' and l!='@'):
+                        p[0]=p[0]+l
+                    code.append(lambda s=s,d=value(p[0],s): s.push(d))
+                    r={'"':0,"'":0,"[":0,"{":0,"(":0,"⟨":0}
+                    if(l=="@"):
+                        p=["",True,c[(i+b+1)%len(c)].lower()]
+                    else:
+                        p=["",False,'']
+                else:
+                    p[0]=p[0]+l
+            elif(f[1]):
+                f[0]=f[0]+l
+                if(l=="(" or l=="{"):
+                    f[2]+=1
+                elif(l==")" or l=="}"):
+                    f[2]-=1
+                if(f[2]==0 and ((f[0][0]=="{" and l==")") or (f[0][0]=="(" and l=="}") or (f[0][0]=="(" and l==")" and c[(i+b+1)%len(c)]!="{"))):
+                    code.append(lambda foo=function_(f[0],s): foo.do())
+                    f=["",False,0]
+            elif(l==" " or l=="	" or l=="→" or l=="⇀" or l=="⇁" or l=="#"):
+                pass
+            elif(l=="@"):
+                p[1]=True
+                p[2]=c[(i+b+1)%len(c)].lower()
+            elif(l=="{" or l=="("):
+                f=[l,True,1]
+            elif(set([l])-set(functions.keys())==set()):
+                code.append(functions[l])
+            else:
+                raise SyntaxError(f"unknown commands {l}")
+        code.append(ef)
+#         print(code)
+        self.code=code
+        self.Stack=s
+    def do(self):
+        try:
+            for i in range(len(self.code)):
+                try:
+                    if(self.code[i]()=="break"):
+                        return "break"
+    #                 print(i,self.code[i],self.Stack)
+                except TypeError:
+                    self.Stack.push(error_(1))
+                except ValueError:
+                    self.Stack.push(error_(2))
+                except IndexError:
+                    self.Stack.push(error_(3))
+                except KeyError:
+                    self.Stack.push(error_(4))
+                except SyntaxError:
+                    self.Stack.push(error_(5))
+                except ArithmeticError:
+                    self.Stack.push(error_(6))
+        except RecursionError:
+            self.Stack.push(error_(7))
+    def __str__(self):
+        return str(self.code)
+class Sequence():
+    def __init__(self,l,s=None):
+        if(type(l)==str_):
+            l=str(l)[1:-1]
+        if(type(l)==str):
+            nl,r=[],0
+            b,e=0,0
+            if(l=="⟨⟩" or l==""):
+                l=list()
+            else:
+                i=0
+                while i<len(l):
+                    if(set([l[i]])-{"[","{","(","⟨"}==set() or (l[i]=='"' and r==1) or (l[i]=="'" and r==1)):
+                        r+=1
+                    elif((l[i]==" " or l[i]=="	") and r==1):
+                        b1,j=i,i+1
+                        while j<len(l) and (l[j]==" " or l[j]=="	"):
+                            j+=1
+                        if(j-b1>0):
+                            i-=1
+                            l=l[:b1]+l[j:]
+                    elif((l[i]==";" or l[i]=="⟩") and r==1):
+                        b=e
+                        e=i
+                        nl.append(value(l[b+1:e],s))
+                    elif(set([l[i]])-{'"',"'","]","}",")","⟩"}==set()):
+                        r-=1
+                    i+=1
+                l=nl
+        if(type(l)==list):
+            for i in range(len(l)):
+                l[i]=value(l[i],s)
+        if(type(l)!=list):
+            l=[l,]
+        self.s=list(l)
+        self.i=0
+    def __str__(self):
+        if(self.s==list()):
+            return "⟨⟩"
+        s="⟨"
+        for i in self.s:
+            s=s+str(i)+"; "
+        return s[:-2]+"⟩"
+    def __iter__(self):
+        self.i=0
+        return self
+    def __next__(self):
+        if self.i<len(self.s):
+            res=self.s[self.i]
+            self.i+=1
+            return res
+        else:
+            raise StopIteration
+    def __len__(self):
+        return len(self.s)
+    def __getitem__(self,i):
+        return self.s[i]
+    def __eq__(self,other):
+        if(type(self)==type(other)):
+            return self.s==other.s
+        return False
 class value_():
-    def __init__(self,v):
+    def __init__(self,v,s=None):
         self.v=v
     def __str__(self):
         return str(self.v)
     def __eq__(self,other):
-        return self.v==other.v
+        if(type(self)==type(other)):
+            return self.v==other.v
+        return False
 class none_(value_):
-    def __init__(self,v=None):
+    def __init__(self,v=None,s=None):
         pass
     def __str__(self):
         return "None"
@@ -111,7 +257,8 @@ class none_(value_):
     def __hash__(self):
         return hash(None)
 class num_(value_):
-    def __init__(self,n):
+    def __init__(self,n,s=None):
+#         print(n)
         if(type(n)==str_):
             n=str(n)[1:-1]
         if(type(n)==str):
@@ -156,9 +303,11 @@ class num_(value_):
     def __complex__(self):
         return self.n
     def __eq__(self,other):
-        if(isnan(self.n) and isnan(other.n)):
-            return True
-        return self.n==other.n
+        if(type(self)==type(other)):
+            if(isnan(self.n) and isnan(other.n)):
+                return True
+            return self.n==other.n
+        return False
     def __hash__(self):
         return hash(self.n)
     def __round__(self,n):
@@ -166,6 +315,8 @@ class num_(value_):
             self.n=complex(round(self.n.real,n),round(self.n.imag,n))
             return self
         raise ValueError
+    def __neg__(self):
+        return num_(-self.n)
     def __add__(self,other):
         return num_(self.n+other.n)
     def __sub__(self,other):
@@ -200,7 +351,7 @@ class num_(value_):
     def isImag(self):
         return (self.n.real==0)
 class bool_(value_):
-    def __init__(self,b):
+    def __init__(self,b,s=None):
         if(type(b)==str_):
             b=str(b)[1:-1]
         if(type(b)==str):
@@ -221,11 +372,13 @@ class bool_(value_):
     def __bool__(self):
         return self.b
     def __eq__(self,other):
-        return self.b==other.b
+        if(type(self)==type(other)):
+            return self.b==other.b
+        return False
     def __hash__(self):
         return hash(self.b)
 class bytes_(value_):
-    def __init__(self,b):
+    def __init__(self,b,s=None):
         if(type(b)==str_):
             b=str(b)[1:-1]
         if(type(b)==str):
@@ -262,7 +415,9 @@ class bytes_(value_):
     def __bytes__(self):
         return self.b
     def __eq__(self,other):
-        return self.b==other.b
+        if(type(self)==type(other)):
+            return self.b==other.b
+        return False
     def __len__(self):
         return len(self.b)
     def __getitem__(self,i):
@@ -282,14 +437,16 @@ class bytes_(value_):
     def find(self,v):
         return self.b.find(bytes(v))
 class str_(value_):
-    def __init__(self,s):
+    def __init__(self,s,st=None):
         if(type(s)==str_):
             s=str(s)[1:-1]
         self.s=str(s)
     def __str__(self):
         return '"'+self.s+'"'
     def __eq__(self,other):
-        return self.s==other.s
+        if(type(self)==type(other)):
+            return self.s==other.s
+        return False
     def __len__(self):
         return len(self.s)
     def __getitem__(self,i):
@@ -319,23 +476,27 @@ class list_(value_):
         if(type(l)==str):
             nl,r=[],0
             b,e=0,0
-            while l.count(", ")+l.count(" ,")+l.count("[ ")+l.count(" ]")>0:
-                l=l.replace(", ", ",")
-                l=l.replace(" ,", ",")
-                l=l.replace("[ ", "[")
-                l=l.replace(" ]", "]")
             if(l=="[]" or l==""):
                 l=list()
             else:
-                for i in range(len(l)):
-                    if(l[i]=="["):
+                i=0
+                while i<len(l):
+                    if(set([l[i]])-{"[","{","(","⟨"}==set() or (l[i]=='"' and r==1) or (l[i]=="'" and r==1)):
                         r+=1
+                    elif((l[i]==" " or l[i]=="	") and r==1):
+                        b1,j=i,i+1
+                        while j<len(l) and (l[j]==" " or l[j]=="	"):
+                            j+=1
+                        if(j-b1>0):
+                            i-=1
+                            l=l[:b1]+l[j:]
                     elif((l[i]=="," or l[i]=="]") and r==1):
                         b=e
                         e=i
                         nl.append(value(l[b+1:e],s))
-                    elif(l[i]=="]"):
+                    elif(set([l[i]])-{'"',"'","]","}",")","⟩"}==set()):
                         r-=1
+                    i+=1
                 l=nl
         if(type(l)==list):
             for i in range(len(l)):
@@ -372,7 +533,9 @@ class list_(value_):
     def insert(self,i,v):
         self.l.insert(int(i),v)
     def __eq__(self,other):
-        return self.l==other.l
+        if(type(self)==type(other)):
+            return self.l==other.l
+        return False
     def __add__(self,other):
         return list_(self.l+other.l)
     def sub(self,s,f):
@@ -389,25 +552,29 @@ class dict_(value_):
         if(type(d)==str):
             l,r=[],0
             b,m,e=0,0,0
-            while d.count(", ")+d.count(" ,")+d.count("[ ")+d.count(" ]")>0:
-                d=d.replace(", ", ",")
-                d=d.replace(" ,", ",")
-                d=d.replace("[ ", "[")
-                d=d.replace(" ]", "]")
             if(d=="[]" or d==""):
                 d=dict()
             else:
-                for i in range(len(d)):
-                    if(d[i]=="["):
+                i=0
+                while i<len(d):
+                    if(set([d[i]])-{"[","{","(","⟨"}==set() or (d[i]=='"' and r==1) or (d[i]=="'" and r==1)):
                         r+=1
+                    elif((d[i]==" " or d[i]=="	") and r==1):
+                        b1,j=i,i+1
+                        while j<len(d) and (d[j]==" " or d[j]=="	"):
+                            j+=1
+                        if(j-b1>0):
+                            i-=1
+                            d=d[:b1]+d[j:]
                     elif(d[i]==":" and r==1):
                         m=i
                     elif((d[i]=="," or d[i]=="]") and r==1):
                         b=e
                         e=i
                         l.append((value(d[b+1:m]),value(d[m+1:e],s)))
-                    elif(d[i]=="]"):
+                    elif(set([d[i]])-{'"',"'","]","}",")","⟩"}==set()):
                         r-=1
+                    i+=1
                 d=dict(l)
         if(type(d)==dict):
             nd={}
@@ -446,7 +613,9 @@ class dict_(value_):
     def insert(self,k,v):
         self.d[k]=v
     def __eq__(self,other):
-        return self.d==other.d
+        if(type(self)==type(other)):
+            return self.d==other.d
+        return False
     def __add__(self,other):
         for k,i in other.d.items():
             self.d[k]=i
@@ -454,99 +623,68 @@ class dict_(value_):
     def find(self,fv):
         return (lambda l: l[0] if len(l)>0 else num_(-1))([k for k,v in self.d.items() if v==fv])
 class function_(value_):
-    class Code():
-        def __init__(self,c,s,b=0,ef=(lambda:None)):
-            functions={"+":lambda s=s:s.plus(),"-":lambda s=s:s.minus(),"*":lambda s=s:s.mult(),"/":lambda s=s:s.div(),"^":lambda s=s:s.exp(),"↧":lambda s=s:s.log(),
-                       "↕":lambda s=s:s.abs(),"o":lambda s=s:s.round(),"R":lambda s=s:s.random(),"s":lambda s=s:s.sin(),"c":lambda s=s:s.cos(),"t":lambda s=s:s.tan(),
-                       "S":lambda s=s:s.arcsin(),"C":lambda s=s:s.arccos(),"T":lambda s=s:s.arctan(),"=":lambda s=s:s.eq(),"<":lambda s=s:s.lt(),">":lambda s=s:s.gt(),
-                       "¬":lambda s=s:s.not_(),"⋀":lambda s=s:s.and_(),"∨":lambda s=s:s.or_(),"⊕":lambda s=s:s.xor(),"w":lambda s=s:s.write(),"f":lambda s=s:s.find(),
-                       "a":lambda s=s:s.append(),"d":lambda s=s:s.delete(),"r":lambda s=s:s.read(),"l":lambda s=s:s.len(),"u":lambda s=s:s.substring(),
-                       "&":lambda s=s:s.concatenate(),"@":lambda s=s:s.push(),"D":lambda s=s:s.pop(),"$":lambda s=s:s.copy(),"L":lambda s=s:s.size(),"%":lambda s=s:s.Bswap(),
-                       "‰":lambda s=s:s.Tswap(),"↑":lambda s=s:s.moveUp(),"↓":lambda s=s:s.moveDown(),"p":lambda s=s:s.print(),"e":lambda s=s:s.enter(),
-                       "§":lambda s=s:s.doNamedFun(),"!":lambda s=s:s.doFun(),"?":lambda s=s:s.type(),"F":lambda s=s:s.format(),"↪":lambda s=s:"break"}
-            code=[]
-            p=["",False,'']
-            r={'"':0,"'":0,"[":0,"{":0,"(":0,"⟨":0}
-            for i in range(len(c)):
-                l=c[(i+b)%len(c)]
-                print(l,r,p)
-                if(p[1]):
-                    if(set([l])-{"[","{","(","⟨"}==set() or (l=='"' and r['"']==0) or (l=="'" and r["'"]==0)):
-                        r[l]+=1
-                    elif(set([l])-{'"',"'","]","}",")","⟩"}==set()):
-                        r[l.replace("]","[").replace("}","{").replace(")","(").replace("⟩","⟨")]-=1
-                    if((p[2]=='"' and l=='"' and r['"']==0) or (p[2]=="'" and l=="'" and r["'"]==0) or (p[2]=='[' and l==']' and r['[']==0) or (p[2]=='{' and (l=='}' or l==')') and r['{']==0 and c[(i+b+1)%len(c)]!='(') or (p[2]=='⟨' and l=='⟩' and r['⟨']==0) or (p[2]=='(' and (l==')' or l=='}') and r['(']==0 and c[(i+b+1)%len(c)]!='{') or (set([p[2]])-signatureNumber==set() and set([l])-(signatureNumber|{'E','.','~','j','f','a'})!=set()) or ((p[2]=='n' or p[2]=='t' or p[2]=='f') and l==' ') or (i==len(c)-1)):
-                        if(l!=' '):
-                            p[0]=p[0]+l
-                        code.append(lambda s=s,d=p[0]: s.push(d))
-                        p=["",False,'']
-                        r={'"':0,"'":0,"[":0,"{":0,"(":0,"⟨":0}
-                        print(code)
-                    else:
-                        p[0]=p[0]+l
-                elif(l==" " or l=="→" or l=="⇀" or l=="⇁"):
-                    pass
-                elif(l=="@"):
-                    p[1]=True
-                    p[2]=c[(i+b+1)%len(c)].lower()
-                elif(set([l])-set(functions.keys())==set()):
-                    code.append(functions[l])
-                else:
-                    raise SyntaxError(f"unknown commands {l}")
-            code.append(ef)
-            self.code=code
-            self.Stack=s
-        def do(self):
-            for i in range(len(self.code)):
-                self.code[i]()
     def __init__(self,f,s):
+#         print(f,s)
         if(type(f)==str_):
             f=str(f)[1:-1]
         if(type(f)==str):
-            wb,we,ob,oe,om,os,st,se=None,None,None,None,None,None,None,None
-            i,r1,r2,r3=0,0,0,0
+            wb,we,ob,oe,om,os,si,st,se=None,None,None,None,None,None,None,None,None
+            i,r1,r2,r3,r4,r5=0,0,0,0,0,0
             while i<len(f):
-                if(f[i]=="("):
+                if(f[i]=='"' and r5==0):
+                    if(r4==0):
+                        r4+=1
+                    else:
+                        r4-=1
+                elif(f[i]=="'" and r4==0):
+                    if(r5==0):
+                        r5+=1
+                    else:
+                        r5-=1
+                elif(f[i]=="(" and r4+r5==0):
                     r1+=1
-                    if(r1==1):
+                    if(r1+r2==1):
                         ob=i
-                elif(f[i]=="{"):
+                elif(f[i]=="{" and r4+r5==0):
                     r2+=1
-                    if(r2==1):
+                    if(r1+r2==1):
                         wb=i
-                elif(f[i]=="["):
+                elif(f[i]=="[" and r4+r5==0):
                     r3+=1
-                elif(f[i]==")"):
+                elif(f[i]==")" and r4+r5==0):
                     r1-=1
-                    if(r1==0):
+                    if(r1+r2==0):
                         oe=i
-                elif(f[i]=="}"):
+                elif(f[i]=="}" and r4+r5==0):
                     r2-=1
-                    if(r2==0):
+                    if(r1+r2==0):
                         we=i
-                elif(f[i]=="]"):
+                elif(f[i]=="]" and r4+r5==0):
                     r3-=1
-                elif(f[i]=="|"):
-                    if(r1==1):
+                elif(f[i]=="|" and r4+r5==0):
+                    if(r1+r2==1):
                         om=i
-                elif(f[i]=="→"):
-                    if(r1==1):
+                elif(f[i]=="→" and r4+r5==0):
+                    if(r1==1 and r2==0):
                         os=i
-                elif(f[i]=="⇀"):
-                    if(r1==1):
+                    elif(r2==1 and r1==0):
+                        si=i
+                elif(f[i]=="⇀" and r4+r5==0):
+                    if(r1+r2==1):
                         st=i
-                elif(f[i]=="⇁"):
-                    if(r1==1):
+                elif(f[i]=="⇁" and r4+r5==0):
+                    if(r1+r2==1):
                         se=i
-                elif(f[i]==" "):
+                elif((f[i]==" " or f[i]=="	") and r4+r5==0):
                     b,j=i+1,i+1
-                    while f[j]==" ":
+                    while j<len(f) and (f[j]==" " or f[j]=="	"):
                         j+=1
                     if(j-b>0):
                         f=f[:b]+f[j:]
                 i+=1
-            if(r1!=0 or r2!=0 or r3!=0):
-                raise SyntaxError("the number of open parentheses is not equal to the number of closed parentheses")
+#             print(f"{{ - {wb}, }} - {we}, ( - {ob}, ) - {oe}, | - {om}, (→) - {os}, {{→}} - {si}, ⇀ - {st}, ⇁ - {se}, len - {i}, () - {r1}, {{}} - {r2}, [] - {r3}, \"\" - {r4}, '' - {r5}")
+            if(r1+r2+r3+r4+r5!=0):
+                raise SyntaxError(f"the number of open parentheses is not equal to the number of closed parentheses. Parentheses balance: () {r1}; {{}} {r2}; [] {r3}; \"\" {r4}; \'\' {r5}")
             if(wb!=None and we!=None):
                 If=f[wb+1:we]
             else:
@@ -560,69 +698,69 @@ class function_(value_):
             if(os!=None and om!=None and os>om or st!=None and om!=None and st>om):
                 Then,Else=Else,Then
                 ob,om=om,ob
+#             print(f'"{If}" , "{Then}" , "{Else}"')
             if(os!=None and ob!=None):
                 if(If==""):
-                    Then=function_.Code(Then,s,os-ob)
+#                     print(1.1)
+                    Then=Code(Then,s,os-ob)
+                    t="function"
                 else:
-                    Then=function_.Code(Then,s,os-ob,lambda foo=self: foo.If.do())
+#                     print(1.2)
+                    Then=Code(Then,s,os-ob,lambda foo=self: foo.If.do())
+                    t="while"
             elif(st!=None and ob!=None):
-                Then=function_.Code(Then,s,st-ob)
+#                 print(1.3)
+                Then=Code(Then,s,st-ob)
+                t="if"
             else:
-                Then=function_.Code(Then,s)
+#                 print(1.4)
+                Then=Code(Then,s)
+                if(If=="" or se==None):
+                    t="undefined"
+                else:
+                    t="if"
             if(se!=None and om!=None):
-                Else=function_.Code(Else,s,se-om)
+#                 print(2.1)
+                Else=Code(Else,s,se-om)
             else:
-                Else=function_.Code(Else,s)
-            if(If==""):
-                If=function_.Code(If,s,0,lambda foo=self: foo.Then.do())
+#                 print(2.2)
+                Else=Code(Else,s)
+            if(si!=None and wb!=None):
+                if(If==""):
+#                     print(3.1)
+                    If=Code(If,s,si-wb,lambda foo=self: foo.Then.do())
+                else:
+#                     print(3.2)
+                    If=Code(If,s,si-wb,lambda s=s,foo=self: foo.Then.do() if (lambda s=s:bool(s.pop()) if (type(s.stack[-1])==bool_ or type(s.stack[-1])==bool) else s.push(error_(1)))(s) else foo.Else.do())
             else:
-                If=function_.Code(If,s,0,lambda foo=self: foo.Then.do() if s.pop() else foo.Else.do())
-#         w=f[wb+1:we]
-#         f=f[ob+1:oe]
-#         os=os-ob
-#         st=st-ob
-#         se=se-ob
-#         l,t,el=[],[],[]
-#         p=["",False,'']
-#         for i in range(len(f)):
-#             e=f[(i+os)%len(f)]
-#             if(p[1]):
-#                 if((p[2]=='"' and e=='"') or (p[2]=="'" and e=="'") or (p[2]=='[' and e==']') or (p[2]=='{' and e=='}') or (p[2]=='⟨' and e=='⟩') or (p[2]=='(' and e==')') or (set([p[2]])-signatureNumber==set() and set([e])-(signatureNumber|{'E','.','~','f','a'})!=set())):
-#                     if(e!=' '):
-#                         p[0]=p[0]+e
-#                     l.append("@"+p[0])
-#                     p=["",False,'']
-#                 else:
-#                     p[0]=p[0]+e
-#             elif(e==" "):
-#                 pass
-#             elif(e=="@"):
-#                 p[1]=True
-#                 p[2]=f[(i+os+1)%len(f)]
-#             elif(set([e])-set(functions.keys())==set() and e!='g' and e!='i'):
-#                 l.append(e)
-#         if(w[:1]=="{"):
-#             w=function_(w)
-#         print(w,l,el)
-        self.If=If
-        self.Then=Then
-        self.Else=Else
-        self.text=str(f)
+                if(If==""):
+#                     print(3.3)
+                    If=Code(If,s,0,lambda foo=self: foo.Then.do())
+                else:
+#                     print(3.4)
+                    If=Code(If,s,0,lambda s=s,foo=self: foo.Then.do() if (lambda s=s:bool(s.pop()) if (type(s.stack[-1])==bool_ or type(s.stack[-1])==bool) else s.push(error_(1)))(s) else foo.Else.do())
+#             print(f,t)
+            self.If=If
+            self.Then=Then
+            self.Else=Else
+            self.text=str(f)
+            self.type=str(t)
+        elif(type(f)==function_):
+            return f
+        else:
+            raise TypeError
+        
     def __str__(self):
-#         s="{"+str(self.If)+"}(→ "
-#         for i in self.Then:
-#             s=s+str(i)+" "
-#         s=s+"|⇁ "
-#         for i in self.Else:
-#             s=s+str(i)+" "
-#         return s[:-1]+")"
         return self.text
     def __eq__(self,other):
-        return self.f==other.f
+        if(type(self)==type(other)):
+            return self.f==other.f
+        return False
     def do(self):
-        self.If.do()
+        if(self.If.do()=="break" and self.type=="if"):
+            return "break"
 class type_(value_):
-    def __init__(self,t):
+    def __init__(self,t,s=None):
         if(type(t)==str_):
             t=str(t)[1:-1]
         if(type(t)==str):
@@ -645,11 +783,13 @@ class type_(value_):
     def __str__(self):
         return '['+str(self.t)[19:-3]+']'
     def __eq__(self,other):
-        return self.t==other.t
+        if(type(self)==type(other)):
+            return self.t==other.t
+        return False
     def __hash__(self):
         return hash(self.t)
 class error_(value_):
-    def __init__(self,code=0):
+    def __init__(self,code=0,s=None):
         if(type(code)==str_):
             code=str(code)[1:-1]
         if(type(code)==str):
@@ -671,6 +811,8 @@ class error_(value_):
     def __str__(self):
         return "{"+str(self.code)+"}"
     def __eq__(self,other):
-        return self.code==other.code
+        if(type(self)==type(other)):
+            return self.code==other.code
+        return False
     def __hash__(self):
         return hash(self.code)
