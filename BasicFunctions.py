@@ -496,7 +496,7 @@ class Stack():
             self.push(error_(2))
     def push(self,v):
         if((type(v)==str and v[:1]=='⟨') or (type(v)==str_ and str(v[1:2])=='⟨')):
-            v=value(v)
+            v=value(v,self)
         if(type(v)==Sequence):
             for i in range(len(v)):
                 self.stack.append(value(v[i],self))
@@ -505,13 +505,13 @@ class Stack():
     def pop(self):
         return self.stack.pop()
     def copy(self):
-        self.push(self.stack[-1])
+        self.stack.append(self.stack[-1])
     def size(self):
-        self.push(len(self.stack))
+        self.stack.append(len(self.stack))
     def Bswap(self):
-        self.stack.insert(-1,self.pop())
+        self.stack.insert(-1,self.stack.pop())
     def Tswap(self):
-        self.stack.insert(-2,self.pop())
+        self.stack.insert(-2,self.stack.pop())
     def moveUp(self):
         if(type(self.stack[-1])==num_ and self.stack[-1].isInteger()):
             self.push(self.stack.pop(self.stack.pop()))

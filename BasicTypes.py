@@ -1,13 +1,12 @@
 from cmath import phase,isnan,isinf
 from math import log,pi
-errorCodes={Exception:0,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
-priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
+errorCodes={Exception:9,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
 constants={"π":3.1415926535897932,"e":2.7182818284590452,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
-defaultValue={"+":(0,0),"-":(0,0),"*":(1,1),"/":(1,1),"↧":(constants["e"],1),"^":(2,1),"√":(2,1),"E":(1,0),"~":(-1,-1)}
 signatureNumber={'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅'}
-operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:a.Ln()/b.Ln(),"^":lambda a,b:a**b,"√":lambda a,b:a**(num_(1)/b),
-            "E":lambda a,b:a*num_(10)**b,"~":lambda a,b:a*b,"n":lambda a:num_(a),"c":lambda a:num_(constants[a]),"d":lambda d:num_(defaultValue[d[0]][d[1]])}
+priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
 def is_number(s):
+    if(s==""):
+        return False
     try:
         num_(s)
         return True
@@ -48,14 +47,21 @@ class ExpressionTreeNode():
                 self.right=None
                 self.value=d
     def count(self):
+        defaultValue={"+":(0,0),"-":(0,0),"*":(1,1),"/":(1,1),"↧":(constants["e"],1),"^":(2,1),"√":(2,1),"E":(1,0),"~":(-1,-1)}
+        operations={"+":lambda a,b:a+b,"-":lambda a,b:a-b,"*":lambda a,b:a*b,"/":lambda a,b:a/b,"↧":lambda a,b:a.Ln()/b.Ln(),
+                    "^":lambda a,b:a**b,"√":lambda a,b:b**(num_(1)/a),"E":lambda a,b:a*num_(10)**b,"~":lambda a,b:a*b,
+                    "n":lambda a:num_(a),"c":lambda a:num_(constants[a]),"d":lambda d:num_(defaultValue[d[0]][d[1]])}
         if(set([self.op])-set(operations.keys())==set()):
             if(set([self.op])-set(priorityOfOperations.keys())==set()):
+#                 print(self.op,self.left,self.right,self.value,operations[self.op](self.left.count(),self.right.count()))
                 return operations[self.op](self.left.count(),self.right.count())
             return operations[self.op](self.value)
+    def __str__(self):
+        return f"({str(self.op)};{str(self.left)};{str(self.right)};{str(self.value)})"
 def value(v,s=None):
     if(type(v)==str):
         if(v[:1]=="⟨"):
-            v=Sequence(v)
+            v=Sequence(v,s)
         elif(v.lower()=="none"):
             v=none_(v)
         elif(v.lower()=="true" or v.lower()=="false"):
@@ -99,14 +105,12 @@ def value(v,s=None):
 class Code():
     def __init__(self,c,s,b=0,ef=(lambda:None)):
 #         print(f"{c} , {s} , {b} , {ef}")
-        functions={"+":lambda s=s:s.plus(),"-":lambda s=s:s.minus(),"*":lambda s=s:s.mult(),"/":lambda s=s:s.div(),"^":lambda s=s:s.exp(),"↧":lambda s=s:s.log(),
-                   "↕":lambda s=s:s.abs(),"o":lambda s=s:s.round(),"R":lambda s=s:s.random(),"s":lambda s=s:s.sin(),"c":lambda s=s:s.cos(),"t":lambda s=s:s.tan(),
-                   "S":lambda s=s:s.arcsin(),"C":lambda s=s:s.arccos(),"T":lambda s=s:s.arctan(),"=":lambda s=s:s.eq(),"<":lambda s=s:s.lt(),">":lambda s=s:s.gt(),
-                   "¬":lambda s=s:s.not_(),"⋀":lambda s=s:s.and_(),"∨":lambda s=s:s.or_(),"⊕":lambda s=s:s.xor(),"w":lambda s=s:s.write(),"f":lambda s=s:s.find(),
-                   "a":lambda s=s:s.append(),"d":lambda s=s:s.delete(),"r":lambda s=s:s.read(),"l":lambda s=s:s.len(),"u":lambda s=s:s.substring(),"&":lambda s=s:s.concatenate(),
-                   "@":lambda s=s:s.push(),"D":lambda s=s:s.pop(),"$":lambda s=s:s.copy(),"L":lambda s=s:s.size(),"%":lambda s=s:s.Bswap(),"‰":lambda s=s:s.Tswap(),
-                   "↑":lambda s=s:s.moveUp(),"↓":lambda s=s:s.moveDown(),"p":lambda s=s:s.print(),"e":lambda s=s:s.enter(),"№":lambda s=s:s.addNamedFun(),
-                   "§":lambda s=s:s.doNamedFun(),"!":lambda s=s:s.doFun(),"?":lambda s=s:s.type(),"F":lambda s=s:s.format(),"↪":lambda:"break"}
+        functions={"+":s.plus,"-":s.minus,"*":s.mult,"/":s.div,"^":s.exp,"↧":s.log,"↕":s.abs,"o":s.round,"R":s.random,
+                   "s":s.sin,"c":s.cos,"t":s.tan,"S":s.arcsin,"C":s.arccos,"T":s.arctan,"=":s.eq,"<":s.lt,">":s.gt,
+                   "¬":s.not_,"⋀":s.and_,"∨":s.or_,"⊕":s.xor,"w":s.write,"f":s.find,"a":s.append,"d":s.delete,
+                   "r":s.read,"l":s.len,"u":s.substring,"&":s.concatenate,"@":s.push,"D":s.pop,"$":s.copy,"L":s.size,
+                   "%":s.Bswap,"‰":s.Tswap,"↑":s.moveUp,"↓":s.moveDown,"p":s.print,"e":s.enter,"№":s.addNamedFun,
+                   "§":s.doNamedFun,"!":s.doFun,"?":s.type,"F":s.format,"↪":lambda:"break"}
         code=[]
         p=["",False,'']
         f=["",False,0]
@@ -160,7 +164,7 @@ class Code():
                 try:
                     if(self.code[i]()=="break"):
                         return "break"
-    #                 print(i,self.code[i],self.Stack)
+#                     print(i,self.code[i],self.Stack)
                 except TypeError:
                     self.Stack.push(error_(1))
                 except ValueError:
@@ -268,8 +272,11 @@ class num_(value_):
                 n=0
             else:
                 n=n.replace('∞','inf').replace('∅','nan').replace('~i','j')
-        if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
-            n=abs(complex(n))
+        try:
+            if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
+                n=abs(complex(n))
+        except ValueError:
+            raise ValueError
         self.n=complex(n)
     def __str__(self):
         if(self.isReal()):
