@@ -1,8 +1,8 @@
 from cmath import phase,isnan,isinf
 from math import log,pi
-errorCodes={Exception:9,TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,SystemExit:8}
-constants={"π":3.1415926535897932,"e":2.7182818284590452,"i":1j,"∞":complex('inf'),"∅":complex('nan')}
-signatureNumber={'0','1','2','3','4','5','6','7','8','9','+','-','i','n','∞','∅'}
+errorCodes={TypeError:1,ValueError:2,IndexError:3,KeyError:4,SyntaxError:5,ArithmeticError:6,RecursionError:7,Exception:8,SystemExit:9}
+constants={"π":3.1415926535897932,"e":2.7182818284590452,"i":1j,"∞":float('inf'),"∅":float('nan')}
+signatureNumber={'0','1','2','3','4','5','6','7','8','9','.','E','+','-','i','∞','∅'}
 priorityOfOperations={"+":1,"-":1,"*":2,"/":2,"↧":3,"^":4,"√":4,"E":5,"~":6}
 def is_number(s):
     if(s==""):
@@ -58,11 +58,22 @@ class ExpressionTreeNode():
             return operations[self.op](self.value)
     def __str__(self):
         return f"({str(self.op)};{str(self.left)};{str(self.right)};{str(self.value)})"
-def value(v,s=None):
+def value(v,s=None,ds=False):
     if(type(v)==str):
+        if(ds):
+            i,q1,q2=0,0,0
+            substitutionTable={"#<":"⟨","#>":"⟩","#l":"↧","#r":"√","pi":"π"}
+            while i<len(v):
+                if(q2%2==0 and v[i]=='"' and i>1 and (v[i-1]!='\\' or v[i-2]=='\\')):
+                    q1+=1
+                elif(q1%2==0 and v[i]=="'"):
+                    q2+=1
+                elif((q1+q2)%2==0 and set([v[i:i+2]])-set(substitutionTable.keys())==set()):
+                    v=v[:i]+substitutionTable[v[i:i+2]]+v[i+2:]
+                i+=1
         if(v[:1]=="⟨"):
             v=Sequence(v,s)
-        elif(v.lower()=="none"):
+        elif(v.lower()=="none" or v==""):
             v=none_(v)
         elif(v.lower()=="true" or v.lower()=="false"):
             v=bool_(v)
@@ -88,7 +99,7 @@ def value(v,s=None):
                     elif(v[i]==',' or v[i]=='['):
                         v=list_(v,s)
                         break
-        elif(set([v[:1]])-(signatureNumber|{'('})==set()):
+        elif(set([v[:1]])-(signatureNumber|{'(','n'})==set()):
             v=num_(v)
     try:
         if(type(v)==type and set([v])-set(errorCodes.keys())==set()):
@@ -102,91 +113,12 @@ def value(v,s=None):
         return v
     else:
         raise ValueError
-class Code():
-    def __init__(self,c,s,b=0,ef=(lambda:None)):
-#         print(f"{c} , {s} , {b} , {ef}")
-        functions={"+":s.plus,"-":s.minus,"*":s.mult,"/":s.div,"^":s.exp,"↧":s.log,"↕":s.abs,"o":s.round,"R":s.random,
-                   "s":s.sin,"c":s.cos,"t":s.tan,"S":s.arcsin,"C":s.arccos,"T":s.arctan,"=":s.eq,"<":s.lt,">":s.gt,
-                   "¬":s.not_,"⋀":s.and_,"∨":s.or_,"⊕":s.xor,"w":s.write,"f":s.find,"a":s.append,"d":s.delete,
-                   "r":s.read,"l":s.len,"u":s.substring,"&":s.concatenate,"@":s.push,"D":s.pop,"$":s.copy,"L":s.size,
-                   "%":s.Bswap,"‰":s.Tswap,"↑":s.moveUp,"↓":s.moveDown,"p":s.print,"e":s.enter,"№":s.addNamedFun,
-                   "§":s.doNamedFun,"!":s.doFun,"?":s.type,"F":s.format,"↪":lambda:"break"}
-        code=[]
-        p=["",False,'']
-        f=["",False,0]
-        r={'"':0,"'":0,"[":0,"{":0,"(":0,"⟨":0}
-        for i in range(len(c)):
-            l=c[(i+b)%len(c)]
-#             print(l,r,p,f)
-            if(p[1]):
-                if(set([l])-{"[","{","(","⟨"}==set() or (l=='"' and r['"']==0) or (l=="'" and r["'"]==0)):
-                    r[l]+=1
-                elif(set([l])-{'"',"'","]","}",")","⟩"}==set()):
-                    r[l.replace("]","[").replace("}","{").replace(")","(").replace("⟩","⟨")]-=1
-                if((p[2]=='"' and l=='"' and r['"']==0) or (p[2]=="'" and l=="'" and r["'"]==0) or (p[2]=='[' and l==']' and r['[']==0) or (p[2]=='{' and (l=='}' or l==')') and r['{']==0 and c[(i+b+1)%len(c)]!='(') or (p[2]=='⟨' and l=='⟩' and r['⟨']==0) or (p[2]=='(' and (l==')' or l=='}') and r['(']==0 and c[(i+b+1)%len(c)]!='{') or (set([p[2]])-signatureNumber==set() and set([l])-(signatureNumber|{'E','.','~','j','f','a'})!=set()) or ((p[2]=='n' or p[2]=='t' or p[2]=='f') and l==' ') or (i==len(c)-1) or (set([p[2]])-{'"',"'","[","{","(","⟨"}!=set() and l=="@")):
-                    if(l!=' ' and l!='→' and l!='⇀' and l!='⇁' and l!='@'):
-                        p[0]=p[0]+l
-                    code.append(lambda s=s,d=value(p[0],s): s.push(d))
-                    r={'"':0,"'":0,"[":0,"{":0,"(":0,"⟨":0}
-                    if(l=="@"):
-                        p=["",True,c[(i+b+1)%len(c)].lower()]
-                    else:
-                        p=["",False,'']
-                else:
-                    p[0]=p[0]+l
-            elif(f[1]):
-                f[0]=f[0]+l
-                if(l=="(" or l=="{"):
-                    f[2]+=1
-                elif(l==")" or l=="}"):
-                    f[2]-=1
-                if(f[2]==0 and ((f[0][0]=="{" and l==")") or (f[0][0]=="(" and l=="}") or (f[0][0]=="(" and l==")" and c[(i+b+1)%len(c)]!="{"))):
-                    code.append(lambda foo=function_(f[0],s): foo.do())
-                    f=["",False,0]
-            elif(l==" " or l=="	" or l=="→" or l=="⇀" or l=="⇁" or l=="#"):
-                pass
-            elif(l=="@"):
-                p[1]=True
-                p[2]=c[(i+b+1)%len(c)].lower()
-            elif(l=="{" or l=="("):
-                f=[l,True,1]
-            elif(set([l])-set(functions.keys())==set()):
-                code.append(functions[l])
-            else:
-                raise SyntaxError(f"unknown commands {l}")
-        code.append(ef)
-#         print(code)
-        self.code=code
-        self.Stack=s
-    def do(self):
-        try:
-            for i in range(len(self.code)):
-                try:
-                    if(self.code[i]()=="break"):
-                        return "break"
-#                     print(i,self.code[i],self.Stack)
-                except TypeError:
-                    self.Stack.push(error_(1))
-                except ValueError:
-                    self.Stack.push(error_(2))
-                except IndexError:
-                    self.Stack.push(error_(3))
-                except KeyError:
-                    self.Stack.push(error_(4))
-                except SyntaxError:
-                    self.Stack.push(error_(5))
-                except ArithmeticError:
-                    self.Stack.push(error_(6))
-        except RecursionError:
-            self.Stack.push(error_(7))
-    def __str__(self):
-        return str(self.code)
 class Sequence():
     def __init__(self,l,s=None):
         if(type(l)==str_):
             l=str(l)[1:-1]
         if(type(l)==str):
-            nl,r=[],0
+            nl,r,q1,q2=[],0,0,0
             b,e=0,0
             if(l=="⟨⟩" or l==""):
                 l=list()
@@ -195,9 +127,13 @@ class Sequence():
                 while i<len(l):
                     if(set([l[i]])-{"[","{","(","⟨"}==set() or (l[i]=='"' and r==1) or (l[i]=="'" and r==1)):
                         r+=1
-                    elif((l[i]==" " or l[i]=="	") and r==1):
+                        if(l[i]=='"'):
+                            q1+=1
+                        if(l[i]=="'"):
+                            q2+=1
+                    elif((l[i]==" " or l[i]=="\t") and r==1):
                         b1,j=i,i+1
-                        while j<len(l) and (l[j]==" " or l[j]=="	"):
+                        while j<len(l) and (l[j]==" " or l[j]=="\t"):
                             j+=1
                         if(j-b1>0):
                             i-=1
@@ -206,8 +142,12 @@ class Sequence():
                         b=e
                         e=i
                         nl.append(value(l[b+1:e],s))
-                    elif(set([l[i]])-{'"',"'","]","}",")","⟩"}==set()):
+                    elif(set([l[i]])-{"]","}",")","⟩"}==set() or (q1==1 and l[i]=='"' and i>1 and (l[i-1]!='\\' or l[i-2]=='\\')) or (q2==1 and l[i]=="'")):
                         r-=1
+                        if(l[i]=='"'):
+                            q1-=1
+                        if(l[i]=="'"):
+                            q2-=1
                     i+=1
                 l=nl
         if(type(l)==list):
@@ -238,10 +178,25 @@ class Sequence():
         return len(self.s)
     def __getitem__(self,i):
         return self.s[i]
+    def __setitem__(self,i,v):
+        self.s[int(i)]=v
+    def pop(self,i):
+        return self.s.pop(int(i))
+    def insert(self,i,v):
+        self.s.insert(int(i),v)
     def __eq__(self,other):
         if(type(self)==type(other)):
             return self.s==other.s
         return False
+    def __add__(self,other):
+        return list_(self.s+other.s)
+    def sub(self,s,f):
+        return list_(self.s[int(s):int(f)])
+    def find(self,v):
+        try:
+            return self.s.index(v)
+        except ValueError:
+            return num_(-1)
 class value_():
     def __init__(self,v,s=None):
         self.v=v
@@ -262,7 +217,6 @@ class none_(value_):
         return hash(None)
 class num_(value_):
     def __init__(self,n,s=None):
-#         print(n)
         if(type(n)==str_):
             n=str(n)[1:-1]
         if(type(n)==str):
@@ -271,13 +225,15 @@ class num_(value_):
             elif(n==""):
                 n=0
             else:
-                n=n.replace('∞','inf').replace('∅','nan').replace('~i','j')
+                n=n.replace('∞','inf').replace('∅','nan').replace('i','j').replace('jnf','inf')
         try:
-            if(isinf(complex(n)) or isnan(complex(n)) or abs(complex(n))==0):
-                n=abs(complex(n))
+            if(isnan(complex(n))):
+                n=complex('nan')
+            elif(isinf(complex(n))):
+                n=complex('inf')
         except ValueError:
-            raise ValueError
-        self.n=complex(n)
+            raise ValueError("This data cannot be converted to a number")
+        self.n=complex(n) #оптимізувати щоб був int, float чи complex в залежності від числа
     def __str__(self):
         if(self.isReal()):
             r=str(self.n.real).replace('e','E')
@@ -288,7 +244,7 @@ class num_(value_):
             i=str(self.n.imag).replace('e','E')
             if(float(i)%1==0):
                 i=i.replace('.0','')
-            return i+'~i'
+            return i+'i'
         else:
             r=str(self.n.real).replace('e','E')
             i=str(self.n.imag).replace('e','E')
@@ -298,7 +254,7 @@ class num_(value_):
                 i=i.replace('.0','')
             if(float(i)>=0):
                 i='+'+i
-            return r+i+'~i'
+            return r+i+'i'
     def __int__(self):
         if(self.isInteger()):
             return int(self.n.real)
@@ -366,6 +322,8 @@ class bool_(value_):
                 b=True
             elif(b.lower()=="false" or b.lower()=="f"):
                 b=False
+        if(type(b)==num_):
+            b=int(b)
         if(type(b)==int):
             if(b==1):
                 b=True
@@ -447,7 +405,7 @@ class str_(value_):
     def __init__(self,s,st=None):
         if(type(s)==str_):
             s=str(s)[1:-1]
-        self.s=str(s)
+        self.s=str(s).replace('\\n','\n').replace('\\t','\t').replace('\\"','\"').replace('\\\\','\\')
     def __str__(self):
         return '"'+self.s+'"'
     def __eq__(self,other):
@@ -478,10 +436,13 @@ class str_(value_):
         return self.s.find(str(v))
 class list_(value_):
     def __init__(self,l,s=None):
+        if(type(l)==list):
+            for i in range(len(l)):
+                l[i]=value(l[i],s)
         if(type(l)==str_):
             l=str(l)[1:-1]
         if(type(l)==str):
-            nl,r=[],0
+            nl,r,q1,q2=[],0,0,0
             b,e=0,0
             if(l=="[]" or l==""):
                 l=list()
@@ -490,9 +451,13 @@ class list_(value_):
                 while i<len(l):
                     if(set([l[i]])-{"[","{","(","⟨"}==set() or (l[i]=='"' and r==1) or (l[i]=="'" and r==1)):
                         r+=1
-                    elif((l[i]==" " or l[i]=="	") and r==1):
+                        if(l[i]=='"'):
+                            q1+=1
+                        if(l[i]=="'"):
+                            q2+=1
+                    elif((l[i]==" " or l[i]=="\t") and r==1):
                         b1,j=i,i+1
-                        while j<len(l) and (l[j]==" " or l[j]=="	"):
+                        while j<len(l) and (l[j]==" " or l[j]=="\t"):
                             j+=1
                         if(j-b1>0):
                             i-=1
@@ -501,13 +466,14 @@ class list_(value_):
                         b=e
                         e=i
                         nl.append(value(l[b+1:e],s))
-                    elif(set([l[i]])-{'"',"'","]","}",")","⟩"}==set()):
+                    elif(set([l[i]])-{"]","}",")","⟩"}==set() or (q1==1 and l[i]=='"' and i>1 and (l[i-1]!='\\' or l[i-2]=='\\')) or (q2==1 and l[i]=="'")):
                         r-=1
+                        if(l[i]=='"'):
+                            q1-=1
+                        if(l[i]=="'"):
+                            q2-=1
                     i+=1
                 l=nl
-        if(type(l)==list):
-            for i in range(len(l)):
-                l[i]=value(l[i],s)
         if(type(l)!=list):
             l=[l,]
         self.l=list(l)
@@ -557,7 +523,7 @@ class dict_(value_):
         if(type(d)==str_):
             d=str(d)[1:-1]
         if(type(d)==str):
-            l,r=[],0
+            l,r,q1,q2=[],0,0,0
             b,m,e=0,0,0
             if(d=="[]" or d==""):
                 d=dict()
@@ -566,9 +532,13 @@ class dict_(value_):
                 while i<len(d):
                     if(set([d[i]])-{"[","{","(","⟨"}==set() or (d[i]=='"' and r==1) or (d[i]=="'" and r==1)):
                         r+=1
-                    elif((d[i]==" " or d[i]=="	") and r==1):
+                        if(d[i]=='"'):
+                            q1+=1
+                        if(d[i]=="'"):
+                            q2+=1
+                    elif((d[i]==" " or d[i]=="\t") and r==1):
                         b1,j=i,i+1
-                        while j<len(d) and (d[j]==" " or d[j]=="	"):
+                        while j<len(d) and (d[j]==" " or d[j]=="\t"):
                             j+=1
                         if(j-b1>0):
                             i-=1
@@ -579,8 +549,12 @@ class dict_(value_):
                         b=e
                         e=i
                         l.append((value(d[b+1:m]),value(d[m+1:e],s)))
-                    elif(set([d[i]])-{'"',"'","]","}",")","⟩"}==set()):
+                    elif(set([d[i]])-{"]","}",")","⟩"}==set() or (q1==1 and d[i]=='"' and i>1 and (d[i-1]!='\\' or d[i-2]=='\\')) or (q2==1 and d[i]=="'")):
                         r-=1
+                        if(d[i]=='"'):
+                            q1-=1
+                        if(d[i]=="'"):
+                            q2-=1
                     i+=1
                 d=dict(l)
         if(type(d)==dict):
@@ -629,143 +603,264 @@ class dict_(value_):
         return self
     def find(self,fv):
         return (lambda l: l[0] if len(l)>0 else num_(-1))([k for k,v in self.d.items() if v==fv])
+
 class function_(value_):
-    def __init__(self,f,s):
-#         print(f,s)
-        if(type(f)==str_):
-            f=str(f)[1:-1]
-        if(type(f)==str):
-            wb,we,ob,oe,om,os,si,st,se=None,None,None,None,None,None,None,None,None
-            i,r1,r2,r3,r4,r5=0,0,0,0,0,0
-            while i<len(f):
-                if(f[i]=='"' and r5==0):
-                    if(r4==0):
-                        r4+=1
-                    else:
-                        r4-=1
-                elif(f[i]=="'" and r4==0):
-                    if(r5==0):
-                        r5+=1
-                    else:
-                        r5-=1
-                elif(f[i]=="(" and r4+r5==0):
-                    r1+=1
-                    if(r1+r2==1):
-                        ob=i
-                elif(f[i]=="{" and r4+r5==0):
-                    r2+=1
-                    if(r1+r2==1):
-                        wb=i
-                elif(f[i]=="[" and r4+r5==0):
-                    r3+=1
-                elif(f[i]==")" and r4+r5==0):
-                    r1-=1
-                    if(r1+r2==0):
-                        oe=i
-                elif(f[i]=="}" and r4+r5==0):
-                    r2-=1
-                    if(r1+r2==0):
-                        we=i
-                elif(f[i]=="]" and r4+r5==0):
-                    r3-=1
-                elif(f[i]=="|" and r4+r5==0):
-                    if(r1+r2==1):
-                        om=i
-                elif(f[i]=="→" and r4+r5==0):
-                    if(r1==1 and r2==0):
-                        os=i
-                    elif(r2==1 and r1==0):
-                        si=i
-                elif(f[i]=="⇀" and r4+r5==0):
-                    if(r1+r2==1):
-                        st=i
-                elif(f[i]=="⇁" and r4+r5==0):
-                    if(r1+r2==1):
-                        se=i
-                elif((f[i]==" " or f[i]=="	") and r4+r5==0):
-                    b,j=i+1,i+1
-                    while j<len(f) and (f[j]==" " or f[j]=="	"):
-                        j+=1
-                    if(j-b>0):
-                        f=f[:b]+f[j:]
-                i+=1
-#             print(f"{{ - {wb}, }} - {we}, ( - {ob}, ) - {oe}, | - {om}, (→) - {os}, {{→}} - {si}, ⇀ - {st}, ⇁ - {se}, len - {i}, () - {r1}, {{}} - {r2}, [] - {r3}, \"\" - {r4}, '' - {r5}")
-            if(r1+r2+r3+r4+r5!=0):
-                raise SyntaxError(f"the number of open parentheses is not equal to the number of closed parentheses. Parentheses balance: () {r1}; {{}} {r2}; [] {r3}; \"\" {r4}; \'\' {r5}")
-            if(wb!=None and we!=None):
-                If=f[wb+1:we]
+    def __init__(self,code,stack):
+#         print(0,code)
+        functions={"+":stack.plus,"-":stack.minus,"*":stack.mult,"/":stack.div,"^":stack.pow,"↧":stack.log,"↕":stack.abs,
+                   "o":stack.round,"R":stack.random,"s":stack.sin,"c":stack.cos,"t":stack.tan,"S":stack.arcsin,"C":stack.arccos,
+                   "T":stack.arctan,"=":stack.eq,"<":stack.lt,">":stack.gt,"¬":stack.not_,"∧":stack.and_,"∨":stack.or_,
+                   "⊕":stack.xor,"w":stack.write,"f":stack.find,"a":stack.append,"d":stack.delete,"r":stack.read,"l":stack.len,
+                   "u":stack.substring,"&":stack.concatenate,"@":stack.push,"D":stack.pop,"$":stack.copy,"L":stack.size,
+                   "%":stack.Bswap,"‰":stack.Tswap,"↑":stack.moveUp,"↓":stack.moveDown,"p":stack.print,"e":stack.enter,
+                   "№":stack.addNamedFun,"§":stack.doNamedFun,"!":stack.doFun,"?":stack.type,"F":stack.format,"_":lambda:None}
+        substitutionTable={"#l":"↧","#m":"↕","#n":"¬","#a":"∧","#o":"∨","#x":"⊕","#%":"‰","#u":"↑","#d":"↓","#N":"№",
+                           "#F":"§","#f":"→","#t":"⇀","#e":"⇁","#b":"↪","#<":"⟨","#>":"⟩","#r":"√","pi":"π"}
+        i=0
+        q1=0
+        q2=0
+        while i<len(code):
+            if(q2%2==0 and code[i]=='"' and i>1 and (code[i-1]!='\\' or code[i-2]=='\\')):
+                q1+=1
+            elif(q1%2==0 and code[i]=="'"):
+                q2+=1
+            elif((q1+q2)%2==0 and set([code[i:i+2]])-set(substitutionTable.keys())==set()):
+                code=code[:i]+substitutionTable[code[i:i+2]]+code[i+2:]
+            i+=1
+#         print(1,code)
+        i=0
+        b=0
+        token=""
+        tokens=[]
+        brackets={'"':'"',"'":"'","(":")","{":"}","[":"]","⟨":"⟩"}
+        markSymbols={"→","⇀","⇁","{","}","(","|",")"}
+        marks=[]
+        parts=[]
+        while i<len(code):
+            if(token=="" and set([code[i]])-(set(functions.keys())|markSymbols|{"↪"})==set()):
+                token=code[i]
+                if(code[i]=="@"):
+                    if(code[i+1:i+5].lower()=="none"):
+                        token+=code[i+1:i+5]
+                        i+=5
+                    elif(code[i+1:i+5].lower()=="true"):
+                        token+=code[i+1:i+5]
+                        i+=5
+                    elif(code[i+1:i+6].lower()=="false"):
+                        token+=code[i+1:i+6]
+                        i+=6
+                    elif(set([code[i+1:i+2]])-signatureNumber==set()):
+                        token+=code[i+1]
+                        i+=2
+                    elif(set([code[i+1:i+2]])-set(brackets.keys())==set()):
+                        token+=code[i+1]
+                        i+=1
+            elif(token[0:1]!="@" and code[i]!=" " and code[i]!="\t" and code[i]!="\n"):
+                raise SyntaxError(f"unknown commands {code[i]}")
+            if(token[0:1]=="@"):
+                if(b>0 or set([code[i],token[1:2]])-(signatureNumber|{'a','n','f'})==set()):
+                    token+=code[i]
+                if(set([code[i],token[1:2]])-((set(brackets.keys())|set(brackets.values()))-{'"'})==set() or (token[1:2]=='"' and code[i]=='"' and i>1 and (code[i-1]!='\\' or code[i-2]=='\\'))):
+                    if(code[i]==token[1:2] and not((token[1:2]=='"' or token[1:2]=="'") and b>0)):
+                        b+=1
+                    elif(code[i]==brackets[token[1:2]]):
+                        b-=1
+                if(b==0 and set([code[i]])-(signatureNumber|{'a','n','f'})!=set()):
+                    tokens.append(token)
+                    if(token!="@" and set([code[i],token[1:2]])-((set(brackets.keys())|set(brackets.values())))!=set()):
+                        i-=1
+                    token=""
+            elif(token!=""):
+                if(set([token])-markSymbols==set()):
+                    if(token=="}" or token==")" or token=="|"):
+                        try:
+                            mstart=marks.pop()
+                            mbegin=marks.pop()
+                        except IndexError:
+                            raise SyntaxError("opening parenthesis or marker arrow not found")
+                        depth=len(marks)//2
+                        parts.append([mbegin,mstart,[token,len(tokens)],depth])
+                    if(set([token])-(markSymbols-{"}",")"})==set()):
+                        marks.append([token,len(tokens)])
+                tokens.append(token)
+                token=""
+            i+=1
+        if(marks!=[]):
+            raise SyntaxError("closing parenthesis not found")
+#         print(2.,parts,marks)
+#         print(2,tokens)
+        for i in range(len(parts)):
+            if(parts[i][0][1]!=parts[i][1][1]-1):
+                for j in range(parts[i][1][1]-parts[i][0][1]-1):
+                    tokens.insert(parts[i][2][1]-1,tokens.pop(parts[i][0][1]+1))
+            j=1
+            while(j<=i and parts[i-j][3]>=parts[i][3]):
+                if(parts[i][0][0]=="{" and parts[i-j][3]==parts[i][3] and parts[i-j][0][0]=="(" and (parts[i-j][2][1]==parts[i][0][1]-1 or (parts[i-j][2][0]=="|" and parts[i-j+1][2][1]==parts[i][0][1]-1))):
+                    for k in range(parts[i][2][1]-parts[i][0][1]+1):
+                        tokens.insert(parts[i-j][0][1],tokens.pop(parts[i][2][1]))
+                    break
+                if(parts[i][1][0]=="⇁" and parts[i-j][3]==parts[i][3] and parts[i-j][0][0]=="(" and parts[i-j][2][1]==parts[i][0][1]):
+                    tokens.insert(parts[i-j][0][1]+1,tokens.pop(parts[i][0][1]))
+                    for k in range(parts[i][2][1]-parts[i][0][1]-1):
+                        tokens.insert(parts[i-j][0][1]+1,tokens.pop(parts[i][2][1]-1))
+                    break
+                j+=1
+#         print(3,tokens)
+        text=""
+        for i in range(len(tokens)):
+            text+=tokens[i]
+            if(set([tokens[i]])-{"{","}","(","|",")"}!=set()):
+                text+=" "
+        marks=[]
+        parts=[]
+        part=[]
+        breaks=[]
+        labels={}
+        commands=[]
+        for i in range(len(tokens)):
+            if(set([tokens[i]])-markSymbols==set()):
+                marks.append([tokens[i],i])
+                part=[]
+                if(len(marks)>=3 and tokens[marks[-3][1]-1:marks[-3][1]]!=["}"] and marks[-1][0]==")" and marks[-2][0]=="→" and marks[-3][0]=="("):
+                    for j in range(3):
+                        part.insert(0,marks.pop())
+                    part.append("f1")
+                elif(len(marks)>=3 and tokens[marks[-1][1]+1:marks[-1][1]+2]!=["("] and marks[-1][0]=="}" and marks[-2][0]=="→" and marks[-3][0]=="{"):
+                    for j in range(3):
+                        part.insert(0,marks.pop())
+                    part.append("f2")
+                elif(len(marks)>=6 and marks[-1][0]==")" and marks[-2][0]=="⇁" and marks[-3][0]=="(" and marks[-4][0]=="}" and marks[-5][0]=="→" and marks[-6][0]=="{"):
+                    for j in range(6):
+                        part.insert(0,marks.pop())
+                    part.append("i1")
+                elif(len(marks)>=6 and marks[-1][0]==")" and marks[-2][0]=="⇀" and marks[-3][0]=="(" and marks[-4][0]=="}" and marks[-5][0]=="→" and marks[-6][0]=="{"):
+                    for j in range(6):
+                        part.insert(0,marks.pop())
+                    part.append("i2")
+                elif(len(marks)>=8 and marks[-1][0]==")" and marks[-2][0]=="⇀" and marks[-3][0]=="|" and marks[-4][0]=="⇁" and marks[-5][0]=="(" and marks[-6][0]=="}" and marks[-7][0]=="→" and marks[-8][0]=="{"):
+                    for j in range(8):
+                        part.insert(0,marks.pop())
+                    part.append("i3")
+                elif(len(marks)>=6 and marks[-1][0]==")" and marks[-2][0]=="→" and marks[-3][0]=="(" and marks[-4][0]=="}" and marks[-5][0]=="→" and marks[-6][0]=="{"):
+                    for j in range(6):
+                        part.insert(0,marks.pop())
+                    part.append("c1")
+                elif(len(marks)>=8 and marks[-1][0]==")" and marks[-2][0]=="→" and marks[-3][0]=="|" and marks[-4][0]=="⇁" and marks[-5][0]=="(" and marks[-6][0]=="}" and marks[-7][0]=="→" and marks[-8][0]=="{"):
+                    for j in range(8):
+                        part.insert(0,marks.pop())
+                    part.append("c2")
+                if(part!=[]):
+                    part.insert(-1,breaks)
+                    breaks=[]
+                    parts.append(part)
+            elif(tokens[i]=="↪"):
+                breaks.append(i)
+        for i in range(len(parts)):
+            for j in range(len(parts[i][-2])):
+                tokens[parts[i][-2][j]]=f"ge{i}" #треба враховувати що для if має бути не {i}, а той n що є в першого не if в який вкладений цей if, або якщо ж такого немає то буде просто {i}
+            if(parts[i][-1]=="f1"):
+                tokens[parts[i][0][1]]="_"
+                tokens[parts[i][1][1]]="_"
+                tokens[parts[i][2][1]]=f"me{i}"
+            elif(parts[i][-1]=="f2"):
+                tokens[parts[i][0][1]]="_"
+                tokens[parts[i][1][1]]="_"
+                tokens[parts[i][2][1]]=f"me{i}"
+            elif(parts[i][-1]=="i1"):
+                tokens[parts[i][0][1]]="_"
+                tokens[parts[i][1][1]]="_"
+                tokens[parts[i][2][1]]=f"ie{i}"
+                tokens[parts[i][3][1]]="_"
+                tokens[parts[i][4][1]]="_"
+                tokens[parts[i][5][1]]=f"me{i}"
+            elif(parts[i][-1]=="i2"):
+                tokens[parts[i][0][1]]="_"
+                tokens[parts[i][1][1]]="_"
+                tokens[parts[i][2][1]]=f"it{i}"
+                tokens[parts[i][3][1]]=f"ge{i}"
+                tokens[parts[i][4][1]]=f"mt{i}"
+                tokens[parts[i][5][1]]=f"me{i}"
+            elif(parts[i][-1]=="i3"):
+                tokens[parts[i][0][1]]="_"
+                tokens[parts[i][1][1]]="_"
+                tokens[parts[i][2][1]]=f"it{i}"
+                tokens[parts[i][3][1]]="_"
+                tokens[parts[i][4][1]]="_"
+                tokens[parts[i][5][1]]=f"ge{i}"
+                tokens[parts[i][6][1]]=f"mt{i}"
+                tokens[parts[i][7][1]]=f"me{i}"
+            elif(parts[i][-1]=="c1"):
+                tokens[parts[i][1][1]]=f"mi{i}"
+                tokens[parts[i][2][1]]=f"ic{i}"
+                tokens[parts[i][3][1]]=f"ge{i}"
+                tokens[parts[i][4][1]]=f"mc{i}"
+                tokens[parts[i][5][1]]=f"me{i}"
+                tokens.insert(parts[i][5][1],f"gi{i}")
+                tokens.pop(parts[i][0][1])
+            elif(parts[i][-1]=="c2"):
+                tokens[parts[i][0][1]]="_"
+                tokens[parts[i][1][1]]=f"mi{i}"
+                tokens[parts[i][2][1]]=f"ic{i}"
+                tokens[parts[i][3][1]]="_"
+                tokens[parts[i][5][1]]=f"ge{i}"
+                tokens[parts[i][6][1]]=f"mc{i}"
+                tokens[parts[i][7][1]]=f"me{i}"
+                tokens.insert(parts[i][7][1],f"gi{i}")
+                tokens.pop(parts[i][4][1])
+#         print(4.,parts,marks)
+#         print(4,tokens)
+        for i in range(len(tokens)):
+            if(tokens[i][:1]=="m"):
+                labels[tokens[i][1:]]=len(commands)
+            elif(tokens[i]!="_"):
+                commands.append(tokens[i])
+#         print(5.,labels)
+#         print(5,commands)
+        for i in range(len(commands)):
+            if(commands[i][:1]=="@"):
+                commands[i]=lambda s=stack,v=commands[i][1:]:s.push(v)
+            elif(commands[i][:1]=="i"):
+                commands[i]=lambda s=stack,i=labels[commands[i][1:]]:self.ifgoto(s,i)
+            elif(commands[i][:1]=="g"):
+                commands[i]=lambda i=labels[commands[i][1:]]:self.goto(i)
             else:
-                If=""
-            if(om==None):
-                Then=f[ob+1:oe]
-                Else=""
-            else:
-                Then=f[ob+1:om]
-                Else=f[om+1:oe]
-            if(os!=None and om!=None and os>om or st!=None and om!=None and st>om):
-                Then,Else=Else,Then
-                ob,om=om,ob
-#             print(f'"{If}" , "{Then}" , "{Else}"')
-            if(os!=None and ob!=None):
-                if(If==""):
-#                     print(1.1)
-                    Then=Code(Then,s,os-ob)
-                    t="function"
-                else:
-#                     print(1.2)
-                    Then=Code(Then,s,os-ob,lambda foo=self: foo.If.do())
-                    t="while"
-            elif(st!=None and ob!=None):
-#                 print(1.3)
-                Then=Code(Then,s,st-ob)
-                t="if"
-            else:
-#                 print(1.4)
-                Then=Code(Then,s)
-                if(If=="" or se==None):
-                    t="undefined"
-                else:
-                    t="if"
-            if(se!=None and om!=None):
-#                 print(2.1)
-                Else=Code(Else,s,se-om)
-            else:
-#                 print(2.2)
-                Else=Code(Else,s)
-            if(si!=None and wb!=None):
-                if(If==""):
-#                     print(3.1)
-                    If=Code(If,s,si-wb,lambda foo=self: foo.Then.do())
-                else:
-#                     print(3.2)
-                    If=Code(If,s,si-wb,lambda s=s,foo=self: foo.Then.do() if (lambda s=s:bool(s.pop()) if (type(s.stack[-1])==bool_ or type(s.stack[-1])==bool) else s.push(error_(1)))(s) else foo.Else.do())
-            else:
-                if(If==""):
-#                     print(3.3)
-                    If=Code(If,s,0,lambda foo=self: foo.Then.do())
-                else:
-#                     print(3.4)
-                    If=Code(If,s,0,lambda s=s,foo=self: foo.Then.do() if (lambda s=s:bool(s.pop()) if (type(s.stack[-1])==bool_ or type(s.stack[-1])==bool) else s.push(error_(1)))(s) else foo.Else.do())
-#             print(f,t)
-            self.If=If
-            self.Then=Then
-            self.Else=Else
-            self.text=str(f)
-            self.type=str(t)
-        elif(type(f)==function_):
-            return f
-        else:
-            raise TypeError
-        
+                commands[i]=functions[commands[i]]
+#         print(6,commands)
+        self.code=commands
+        self.text=text
+        self.i=0
     def __str__(self):
         return self.text
-    def __eq__(self,other):
-        if(type(self)==type(other)):
-            return self.f==other.f
-        return False
+    def goto(self,i):
+        self.i=i-1
+    def ifgoto(self,stack,i):
+        try:
+            buffer=stack.pop()
+        except IndexError:
+            pass
+        if(len(stack.stack)>0 and bool(bool_(buffer))):
+            self.i=i-1
     def do(self):
-        if(self.If.do()=="break" and self.type=="if"):
-            return "break"
+        self.i=0
+        try:
+            while self.i<len(self.code):
+                self.code[self.i]()
+                self.i+=1
+        except TypeError:
+            self.push(error_(1))
+        except ValueError:
+            self.push(error_(2))
+        except IndexError:
+            self.push(error_(3))
+        except KeyError:
+            self.push(error_(4))
+        except SyntaxError:
+            self.push(error_(5))
+        except ArithmeticError:
+            self.push(error_(6))
+        except RecursionError:
+            self.push(error_(7))
+
 class type_(value_):
     def __init__(self,t,s=None):
         if(type(t)==str_):
@@ -809,9 +904,9 @@ class error_(value_):
                 code=errorCodes[code]
             except KeyError:
                 code=0
-        if(0<=int(code) and int(code)<=7):
+        if(0<=int(code) and int(code)<=8):
             self.code=int(code)
-        elif(int(code)==8):
+        elif(int(code)==9):
             exit()
         else:
             raise ValueError

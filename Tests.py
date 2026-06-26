@@ -7,7 +7,7 @@ def arithmeticTest():
         s.push(num_(1))
         s.Bswap()
         s.div()
-        s.exp()
+        s.pow()
     s=Stack()
     v,l=[num_(0),num_(1),num_(2),num_(-2),num_(3+3j),num_(-3-3j),num_('inf'),num_('nan')],[]
     for i in range(len(v)):
@@ -60,7 +60,7 @@ def arithmeticTest():
         for j in range(len(v)):
             s.push(v[i])
             s.push(v[j])
-            s.exp()
+            s.pow()
             s.push(num_(3))
             s.round()
             if(type(s.stack[-1])==error_ and s.stack[-1]==error_(1)):
@@ -215,7 +215,7 @@ def typeTest():
     print(str_(str_(str_("abc"))))
     print(list_(str_(list_([1,2,3]))))
     print(dict_(str_(dict_({"a":1,"b":2,"c":3}))))
-    print(function_(str_(function_('{@False}(@[str] F p ⇁ @2 @2 *   |⇀ @"anc: " @2 @2 + @[str] F p)',Stack())),Stack())) #→⇀⇁
+    print(function_(str_(function_('{→ @False}(@[str] F p ⇁ @2 @2 *   |⇀ @"anc: " @2 @2 + @[str] F p)',Stack())),Stack())) #→⇀⇁
     print(type_(str_(type_(num_))))
     print(error_(str_(error_(0))))
     print("Test value to python value to value")
@@ -398,12 +398,12 @@ def containerTest():
 def function_Test():
     print("\n\tTest function_:")
     s=Stack()
-    s.push('⟨-1;0   ;  "  1" ⟩')
-    s.push('(→ @0 {→ @True}(→ @1 {$ ? @[error] =}(⇀ ↪) + |⇁ @"3+3:   " @3 @3 + @[str] F & p) @123)')
+    s.push('[-1, #<0; 0#>,  "#<\' #rinf  1 #>" ,(#rpi), nan+infi ]')
+    s.push('#<-1;#<0; 0#>;  "#<\' #rinf  1 #>" ;(#rpi); nan+infi #>')
     s.push(0)
     s.doFun()
     print("$$$",s)
-    s.push('(→ @⟨0;1⟩ {→ @True}(→ $ ‰ + $ @[str] F @" " & p) D D D @"...\n" p)') #@⟨0;1⟩ @0 @1
+    s.push('(→ @⟨0;0;1;"0 1 "⟩ p {→ ‰ ‰ @1 + $ @80 >}(→ ‰ $ ‰ + $ @[str] F @" " & p) D D D @"...\n" p)')
     s.push("Fibonacci numbers")
     print("$$$",s,NamedFunction)
     s.addNamedFun()
@@ -411,7 +411,8 @@ def function_Test():
     s.push("Fibonacci numbers")
     s.doNamedFun()
     print("$$$",s)
-    s.push(['{→ @(→ @"fun " p) @0 ! @True}(@[str] F & @"\n" & p ⇁ {→ @True}(→ @"answer: " @3 ↪ @3 *)  	|⇀ (→ @"answer: " @2 @2 +) @[str] F & @"\n" & p)',"(12+3)"])
+    function_('{→ @ @(→ @"fun " p) @0 ! @0}(⇀ (#f @#<"answer: ";2;2#> +) @[str] F & @"\\n" & p | @[str] F & @"\\n" & p ⇁ (→ @"answer: " @3 ↪ @+inf-32.1i *){→ @True}  	)',s).do()
+    s.push(['{→ @ @(→ @"fun " p) @0 ! @True}(@[str] F & @"\n" & p ⇁ {→ @True}(→ @"answer: " @3 ↪ @3 *)  	|⇀ (→ @"answer: " @2 @2 +) @[str] F & @"\n" & p)',"(12+3)"])
     s.push([-1,0])
     s.moveUp()
     print("$$$",s)

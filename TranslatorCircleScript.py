@@ -4,31 +4,38 @@ from tkinter import *
 from tkinter import filedialog
 def definingTheFilePath(method=0):
     if(method==0):
-        return "D:\\мої програми\\Python\\CircleScript\\test code.cyrx"
+        return "test code.cyrx"
     elif(method==1):
         return input("Шлях до файлу .cyrx: ")
     elif(method==2):
         Window=Tk()
-        path=filedialog.askopenfilenames(parent=Window,initialdir='',initialfile='',filetypes=[("CircleScript","*.cyrx"),("All files","*")])
+        Label(Window,text=
+"""CircleScript використовує файли
+.cyrx для зберігання коду та .cyrl
+для зберігання бібліотек функцій.
+Хоча ви можете зберігати ці данні
+й в інших текстових форматах""").pack()
+        filetypes=[("CircleScript","*.cyrx"),("CircleScriptLib","*.cyrl"),("All files","*")]
+        path=filedialog.askopenfilenames(parent=Window,initialdir='',initialfile='',filetypes=filetypes)
         Window.destroy()
-        return path[0]
+        if(len(path)>0):
+            return path[0]
     return ""
 path=definingTheFilePath(0)
-try:
-    with open(path,'r',encoding='utf-8') as file:
-        info=[]
-        for line in file:
-            if(line.strip()!=""):
-                info.append(line.strip())
-except FileNotFoundError:
-    print(f"Error: The file '{path}' was not found.")
-except IOError:
-    print(f"Error reading the file: '{path}'.")
+with open(path,'r',encoding='utf-8') as file:
+    info=[]
+    for line in file:
+        if(line.strip()!=""):
+            info.append(line.strip())
 functions=[]
 for i in range(len(info)):
-    if(info[i][0]=="↣"):
+    if(info[i][0]=="↣" or info[i][0:2]=="#s"):
         n=""
-        for j in range(1,len(info[i])):
+        if(info[i][0]=="↣"):
+            offset=1
+        else:
+            offset=2
+        for j in range(offset,len(info[i])):
             if(set([info[i][j]])-{"0","1","2","3","4","5","6","7","8","9"}==set()):
                 n+=info[i][j]
             else:
@@ -46,13 +53,6 @@ for i in range(len(functions)):
                 b=j
         elif(functions[i][1][j]=="}" or functions[i][1][j]==")"):
             r-=1
-        elif(functions[i][1][j]=="\\"):
-            if(functions[i][1][j+1:j+2]=="\\"):
-                functions[i][1]=functions[i][1][:j]+"\\"+functions[i][1][j+2:]
-            elif(functions[i][1][j+1:j+2]=="n"):
-                functions[i][1]=functions[i][1][:j]+"\n"+functions[i][1][j+2:]
-            elif(functions[i][1][j+1:j+2]=="t"):
-                functions[i][1]=functions[i][1][:j]+"\t"+functions[i][1][j+2:]
         if((f=="{" and functions[i][1][j]==")" and r==0) or (f=="(" and functions[i][1][j]=="}" and r==0) or (f=="(" and functions[i][1][j]==")" and functions[i][1][j+1:j+2]!="{" and r==0)):
             functions[i]=functions[i][1][b:j+1]
             break

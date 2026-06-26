@@ -1,5 +1,5 @@
 from math import sin,cos,sinh,cosh,pi
-from cmath import isnan,isinf
+from cmath import isinf
 from random import random
 from BasicTypes import *
 NamedFunction={}
@@ -57,7 +57,7 @@ class Stack():
                 self.push(error_(6))
         else:
             self.push(error_(1))
-    def exp(self):
+    def pow(self):
         if(type(self.stack[-1])==num_ and type(self.stack[-2])==num_):
             try:
                 buffer=[self.pop(),self.pop()]
@@ -495,19 +495,21 @@ class Stack():
             self.push(buffer[0])
             self.push(error_(2))
     def push(self,v):
-        if((type(v)==str and v[:1]=='⟨') or (type(v)==str_ and str(v[1:2])=='⟨')):
-            v=value(v,self)
+        if((type(v)==str and (v[:1]=='⟨' or v[:2]=='#<')) or (type(v)==str_ and (str(v[1:2])=='⟨' or str(v[1:3])=='#<'))):
+            v=value(v,self,True)
         if(type(v)==Sequence):
             for i in range(len(v)):
-                self.stack.append(value(v[i],self))
+                self.push(v[i])
         else:
-            self.stack.append(value(v,self))
+            self.stack.append(value(v,self,True))
     def pop(self):
         return self.stack.pop()
     def copy(self):
         self.stack.append(self.stack[-1])
+        return self.stack[-1]
     def size(self):
         self.stack.append(len(self.stack))
+        return len(self.stack)
     def Bswap(self):
         self.stack.insert(-1,self.stack.pop())
     def Tswap(self):
