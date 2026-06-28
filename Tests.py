@@ -412,7 +412,7 @@ def function_Test():
     s.doNamedFun()
     print("$$$",s)
     function_('{→ @ @(→ @"fun " p) @0 ! @0}(⇀ (#f @#<"answer: ";2;2#> +) @[str] F & @"\\n" & p | @[str] F & @"\\n" & p ⇁ (→ @"answer: " @3 ↪ @+inf-32.1i *){→ @True}  	)',s).do()
-    s.push(['{→ @ @(→ @"fun " p) @0 ! @True}(@[str] F & @"\n" & p ⇁ {→ @True}(→ @"answer: " @3 ↪ @3 *)  	|⇀ (→ @"answer: " @2 @2 +) @[str] F & @"\n" & p)',"(12+3)"])
+    s.push('[(#f{→ @ @(→ @"fun " p) @0 ! @False}(@[str] F & @"\\n" & p ⇁ {→ @True}(⇀ @"answer: " @3 ↪ @3 * ++--)  	|⇀ (→ @"answer: " @2 @2 +) @[str] F & @"\\n" & p)@"j"),(e^pi~i+1)]')
     s.push([-1,0])
     s.moveUp()
     print("$$$",s)

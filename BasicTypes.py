@@ -667,7 +667,7 @@ class function_(value_):
                         b-=1
                 if(b==0 and set([code[i]])-(signatureNumber|{'a','n','f'})!=set()):
                     tokens.append(token)
-                    if(token!="@" and set([code[i],token[1:2]])-((set(brackets.keys())|set(brackets.values())))!=set()):
+                    if(token!="@" and set([code[i],token[1:2]])-(set(brackets.keys())|set(brackets.values()))!=set()):
                         i-=1
                     token=""
             elif(token!=""):
@@ -750,14 +750,33 @@ class function_(value_):
                         part.insert(0,marks.pop())
                     part.append("c2")
                 if(part!=[]):
-                    part.insert(-1,breaks)
-                    breaks=[]
                     parts.append(part)
             elif(tokens[i]=="↪"):
-                breaks.append(i)
+                breaks.append([i,marks[-1]])
+        for i in range(len(breaks)):
+            for j in range(len(parts)):
+                if((len(parts[j])>1 and parts[j][1]==breaks[i][1]) or (len(parts[j])>4 and parts[j][4]==breaks[i][1]) or (len(parts[j])>7 and parts[j][6]==breaks[i][1])):
+                    if(len(parts[j])>1 and parts[j][1]==breaks[i][1]):
+                        for l in range(breaks[i][0]+1,parts[j][2][1]):
+                            tokens[l]="_"
+                    elif(len(parts[j])>4 and parts[j][4]==breaks[i][1]):
+                        for l in range(breaks[i][0]+1,parts[j][5][1]):
+                            tokens[l]="_"
+                    elif(len(parts[j])>7 and parts[j][6]==breaks[i][1]):
+                        for l in range(breaks[i][0]+1,parts[j][7][1]):
+                            tokens[l]="_"
+                    if(parts[j][-1][0]=="i"):
+                        for k in range(j+1,len(parts)):
+                            if((parts[k][-1][0]!='i' and parts[k][0][1]<parts[j][0][1])):
+                                tokens[breaks[i][0]]=f"ge{k}"
+                                break
+                        else:
+                            tokens[breaks[i][0]]=f"ge{j}"
+                    else:
+                        tokens[breaks[i][0]]=f"ge{j}"
+                    break
+
         for i in range(len(parts)):
-            for j in range(len(parts[i][-2])):
-                tokens[parts[i][-2][j]]=f"ge{i}" #треба враховувати що для if має бути не {i}, а той n що є в першого не if в який вкладений цей if, або якщо ж такого немає то буде просто {i}
             if(parts[i][-1]=="f1"):
                 tokens[parts[i][0][1]]="_"
                 tokens[parts[i][1][1]]="_"
